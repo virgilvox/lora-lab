@@ -1,0 +1,77 @@
+{
+	"meta": {
+		"generatedAt": "2025-06-17T04:14:33.760Z",
+		"tasksAnalyzed": 8,
+		"totalTasks": 10,
+		"analysisCount": 8,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 3,
+			"taskTitle": "Build Model and Corpus Input UI",
+			"complexityScore": 6,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down the UI development into: (1) HeaderBar.vue base structure, (2) model dropdown logic, (3) URL input with validation, (4) file upload with error handling, (5) textarea input and tokenization, (6) integration and state management. Consider accessibility and edge case handling.",
+			"reasoning": "This task involves multiple interactive UI elements, file handling, and tokenization logic, each with its own validation and state management. While not algorithmically complex, the integration and UX considerations increase overall complexity. More granular subtasks will help manage validation, error handling, and integration points."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Develop Plan Estimator and Modal",
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Expand into: (1) hardware data integration, (2) runtime/memory estimation logic, (3) modal UI/UX design, (4) mode selection controls, (5) state management and event handling. Include error handling for missing or unsupported hardware data.",
+			"reasoning": "The task requires integrating hardware detection, performing calculations, and building a modal UI with interactive selection. The logic is straightforward but involves multiple data flows and user interactions, warranting a moderate complexity score and a few more subtasks for robustness."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Implement Training Dashboard",
+			"complexityScore": 6,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Decompose into: (1) dashboard layout, (2) real-time data connection, (3) token counter logic, (4) loss chart rendering, (5) throughput/ETA calculation, (6) abort button and error handling. Ensure modularity for each dashboard element.",
+			"reasoning": "Real-time updates, custom charting, and abort logic add to the complexity. Each dashboard element has distinct logic and UI needs, and robust error handling is required for real-time systems. More subtasks will help isolate concerns and improve maintainability."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Integrate ONNX Runtime Web and Custom Kernels",
+			"complexityScore": 8,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "Expand into: (1) ONNX Runtime Web setup, (2) WebGPU EP configuration, (3) custom kernel development, (4) kernel registration, (5) IO-Binding integration, (6) GraphCapture optimization, (7) Adapter/Full mode support and testing. Include cross-browser compatibility and performance benchmarking.",
+			"reasoning": "This task involves advanced GPU programming, custom kernel development, and deep integration with ONNX Runtime Web. Supporting multiple execution modes and optimizing for performance and compatibility significantly increases complexity, requiring more granular subtasks."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Implement Training Worker and Data Loader",
+			"complexityScore": 7,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down into: (1) data loader design, (2) tokenization and preprocessing, (3) dual-sequence packing logic, (4) TF-IDF curriculum sampling, (5) training worker communication, (6) integration and end-to-end testing. Address large dataset handling and error recovery.",
+			"reasoning": "The task spans asynchronous data loading, curriculum learning, and off-main-thread training, each with non-trivial logic and integration. Handling large datasets and ensuring robust worker communication adds to the complexity, justifying additional subtasks."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Build Chat Panel and Adapter Toggle",
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Expand into: (1) chat panel layout, (2) message handling logic, (3) LoRA toggle UI, (4) mode switching logic, (5) integration with backend/model. Include accessibility and seamless mode switching.",
+			"reasoning": "While the UI and logic are standard for chat interfaces, the need for seamless mode switching and integration with model backends adds moderate complexity. More subtasks will help ensure smooth user experience and robust state management."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Implement Adapter Export and Import",
+			"complexityScore": 6,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Decompose into: (1) export logic, (2) file serialization, (3) drag-and-drop UI, (4) file validation, (5) adapter loading, (6) error handling and user feedback. Ensure compatibility checks and graceful error states.",
+			"reasoning": "This task involves file I/O, serialization, drag-and-drop UI, and validation logic, each with potential edge cases and error handling needs. Ensuring file integrity and compatibility increases the complexity, warranting more granular subtasks."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Develop Footer and Status Bar",
+			"complexityScore": 4,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Expand into: (1) footer layout and design, (2) real-time data integration, (3) memory/status indicators, (4) download button logic. Include responsiveness and accessibility checks.",
+			"reasoning": "The footer aggregates and displays real-time status data with some interactive elements. While not highly complex, real-time updates and integration with backend data sources require careful handling, justifying a few focused subtasks."
+		}
+	]
+}

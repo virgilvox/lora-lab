@@ -1,7 +1,7 @@
 <template>
   <header class="header-bar">
     <div class="header-content">
-      <!-- Logo -->
+      <!-- Left: Logo -->
       <div class="logo-section">
         <div class="logo">
           <span class="logo-icon">🧬</span>
@@ -9,45 +9,36 @@
         </div>
       </div>
 
-      <!-- Main Controls -->
+      <!-- Center: Controls -->
       <div class="controls-section">
-        <!-- Model Selection -->
         <div class="control-group">
-          <label class="control-label">Model</label>
-          <div class="model-selector">
+          <label for="model-select" class="control-label">Model</label>
+          <div class="model-input-group">
             <select 
+              id="model-select"
               :value="selectedModel?.id || ''"
               @change="handleModelChange"
               class="model-dropdown"
             >
-              <option value="">Select Model...</option>
+              <option value="" disabled>Select Model...</option>
               <option 
                 v-for="model in modelOptions" 
                 :key="model.id"
                 :value="model.id"
               >
-                {{ model.name }} ({{ model.size }})
+                {{ model.name }}
               </option>
             </select>
-            
-            <div v-if="selectedModel" class="model-info">
-              <span class="model-description">{{ selectedModel.description }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Custom Model URL -->
-        <div class="control-group">
-          <label class="control-label">Load URL</label>
-          <div class="url-input-group">
             <input 
+              v-if="selectedModel?.id === 'custom'"
               v-model="customModelUrl"
               type="url"
-              placeholder="https://huggingface.co/..."
+              placeholder="Enter ONNX model URL"
               class="url-input"
               :disabled="isTraining"
             />
             <button 
+              v-if="selectedModel?.id === 'custom'"
               @click="handleLoadUrl"
               class="load-url-btn"
               :disabled="!customModelUrl || isTraining"
@@ -57,93 +48,68 @@
           </div>
         </div>
 
-        <!-- Corpus Controls -->
+        <div class="separator"></div>
+
         <div class="control-group">
-          <label class="control-label">Corpus</label>
-          <div class="corpus-controls">
+          <label class="control-label">Setup</label>
+          <div class="button-group">
             <button 
-              @click="$emit('corpus-uploaded')"
-              class="corpus-btn"
+              @click="$emit('corpus-requested')"
+              class="control-btn"
               :disabled="isTraining"
-              title="Upload text file or paste content"
+              :class="{ 'active': hasCorpus }"
+              title="Upload or paste training data"
             >
-              <span class="btn-icon">📁</span>
-              Choose Corpus
+              <span class="btn-icon">📄</span>
+              Corpus
             </button>
-            
             <button 
-              @click="$emit('corpus-pasted')"
-              class="corpus-btn secondary"
+              @click="$emit('plan-requested')"
+              class="control-btn"
               :disabled="isTraining"
-              title="Paste text directly"
+              :class="{ 'active': hasTrainingPlan }"
+              title="Configure Training Plan"
             >
-              <span class="btn-icon">📝</span>
-              Paste Text
+              <span class="btn-icon">⚙️</span>
+              Plan
             </button>
           </div>
         </div>
+        
+        <div class="separator"></div>
 
-        <!-- Training Plan -->
         <div class="control-group">
-          <label class="control-label">Plan</label>
-          <button 
-            @click="$emit('plan-requested')"
-            class="plan-btn"
-            :disabled="isTraining"
-            :class="{ 'has-plan': hasTrainingPlan }"
-          >
-            <span class="btn-icon">⚙️</span>
-            {{ hasTrainingPlan ? 'Update Plan' : 'Select Plan' }}
-            <span v-if="hasTrainingPlan" class="plan-indicator">✓</span>
-          </button>
-        </div>
-
-        <!-- Train Button -->
-        <div class="control-group">
-          <button 
+           <button 
             @click="handleTrainClick"
             class="train-btn"
             :disabled="!canStartTraining || isTraining"
             :class="{ 
               'ready': canStartTraining && !isTraining,
-              'training': isTraining,
-              'disabled': !canStartTraining 
+              'training': isTraining
             }"
           >
             <span class="btn-icon">
               {{ isTraining ? '⏸' : '▶' }}
             </span>
             {{ isTraining ? 'Training...' : 'Train' }}
-            <div v-if="isTraining" class="training-progress"></div>
           </button>
         </div>
       </div>
 
-      <!-- Status Indicators -->
+      <!-- Right: Status -->
       <div class="status-section">
         <div class="status-indicators">
-          <!-- Model Status -->
-          <div class="status-item" :class="{ 'active': selectedModel }">
+          <div class="status-item" :class="{ 'active': selectedModel }" title="Model Loaded">
             <div class="status-dot"></div>
-            <span class="status-text">Model</span>
           </div>
-          
-          <!-- Corpus Status -->
-          <div class="status-item" :class="{ 'active': hasCorpus }">
+          <div class="status-item" :class="{ 'active': hasCorpus }" title="Corpus Ready">
             <div class="status-dot"></div>
-            <span class="status-text">Corpus</span>
           </div>
-          
-          <!-- Plan Status -->
-          <div class="status-item" :class="{ 'active': hasTrainingPlan }">
+          <div class="status-item" :class="{ 'active': hasTrainingPlan }" title="Plan Configured">
             <div class="status-dot"></div>
-            <span class="status-text">Plan</span>
           </div>
-          
-          <!-- GPU Status -->
-          <div class="status-item" :class="{ 'active': isGPUReady }">
+          <div class="status-item" :class="{ 'active': isGPUReady }" title="GPU Ready">
             <div class="status-dot"></div>
-            <span class="status-text">GPU</span>
           </div>
         </div>
       </div>
@@ -196,8 +162,7 @@ export default {
   emits: [
     'model-selected', 
     'load-model-url', 
-    'corpus-uploaded', 
-    'corpus-pasted', 
+    'corpus-requested', 
     'plan-requested', 
     'training-requested'
   ],
@@ -238,13 +203,14 @@ export default {
   background-color: #1a1a1a;
   border-bottom: 1px solid #333;
   position: relative;
+  z-index: 100;
 }
 
 .header-content {
   display: flex;
   align-items: center;
-  padding: 1rem 1.5rem;
-  gap: 2rem;
+  padding: 0.75rem 1.5rem;
+  gap: 1.5rem;
 }
 
 /* Logo Section */
@@ -256,13 +222,13 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: #fff;
 }
 
 .logo-icon {
-  font-size: 2rem;
+  font-size: 1.5rem;
 }
 
 .logo-text {
@@ -278,184 +244,107 @@ export default {
   align-items: center;
   gap: 1.5rem;
   flex: 1;
-  overflow-x: auto;
 }
 
 .control-group {
   display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  min-width: max-content;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .control-label {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: #888;
-  text-transform: uppercase;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+.separator {
+  width: 1px;
+  height: 24px;
+  background-color: #333;
 }
 
 /* Model Selection */
-.model-selector {
-  position: relative;
+.model-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #2a2a2a;
+  border-radius: 6px;
+  border: 1px solid #444;
+  padding: 0.25rem;
 }
 
 .model-dropdown {
-  padding: 0.6rem 1rem;
-  background-color: #2a2a2a;
-  border: 1px solid #444;
-  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  background-color: transparent;
+  border: none;
   color: #fff;
   font-size: 0.9rem;
-  min-width: 200px;
   cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }
 
 .model-dropdown:focus {
   outline: none;
-  border-color: #10b981;
-}
-
-.model-info {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background-color: #333;
-  border: 1px solid #444;
-  border-top: none;
-  border-radius: 0 0 6px 6px;
-  padding: 0.5rem;
-  font-size: 0.8rem;
-  color: #ccc;
-  z-index: 10;
-}
-
-.model-description {
-  display: block;
-}
-
-/* URL Input */
-.url-input-group {
-  display: flex;
-  gap: 0.5rem;
 }
 
 .url-input {
-  padding: 0.6rem 1rem;
-  background-color: #2a2a2a;
-  border: 1px solid #444;
-  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  background-color: #1a1a1a;
+  border: 1px solid #555;
+  border-radius: 4px;
   color: #fff;
   font-size: 0.9rem;
-  width: 220px;
-}
-
-.url-input:focus {
-  outline: none;
-  border-color: #10b981;
+  width: 200px;
 }
 
 .load-url-btn {
-  padding: 0.6rem 1rem;
-  background-color: #374151;
-  border: 1px solid #6b7280;
-  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  background-color: #3b82f6;
+  border: none;
+  border-radius: 4px;
   color: #fff;
   cursor: pointer;
   font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.2s;
+  font-weight: 500;
 }
 
-.load-url-btn:hover:not(:disabled) {
-  background-color: #4b5563;
-}
-
-.load-url-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Corpus Controls */
-.corpus-controls {
+/* Button Group */
+.button-group {
   display: flex;
   gap: 0.5rem;
+  background-color: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 0.25rem;
 }
 
-.corpus-btn {
+.control-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.6rem 1rem;
-  background-color: #374151;
-  border: 1px solid #6b7280;
-  border-radius: 6px;
-  color: #fff;
+  padding: 0.4rem 0.8rem;
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #ccc;
   cursor: pointer;
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 500;
   transition: all 0.2s;
 }
 
-.corpus-btn:hover:not(:disabled) {
-  background-color: #4b5563;
-}
-
-.corpus-btn.secondary {
-  background-color: #2a2a2a;
-  border-color: #444;
-}
-
-.corpus-btn.secondary:hover:not(:disabled) {
+.control-btn:hover:not(:disabled) {
   background-color: #333;
 }
 
-.corpus-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-icon {
-  font-size: 1rem;
-}
-
-/* Plan Button */
-.plan-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 1rem;
-  background-color: #374151;
-  border: 1px solid #6b7280;
-  border-radius: 6px;
+.control-btn.active {
+  background-color: #10b981;
   color: #fff;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.2s;
-  position: relative;
-}
-
-.plan-btn:hover:not(:disabled) {
-  background-color: #4b5563;
-}
-
-.plan-btn.has-plan {
-  background-color: #065f46;
   border-color: #10b981;
-  color: #fff;
-}
-
-.plan-btn.has-plan:hover:not(:disabled) {
-  background-color: #047857;
-}
-
-.plan-indicator {
-  margin-left: 0.5rem;
-  color: #10b981;
-  font-weight: bold;
 }
 
 /* Train Button */
@@ -463,23 +352,15 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.8rem 1.5rem;
+  padding: 0.5rem 1.25rem;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 600;
   transition: all 0.2s;
-  position: relative;
-  overflow: hidden;
-  min-width: 120px;
-  justify-content: center;
-}
-
-.train-btn.disabled {
   background-color: #374151;
   color: #6b7280;
-  cursor: not-allowed;
 }
 
 .train-btn.ready {
@@ -490,7 +371,6 @@ export default {
 
 .train-btn.ready:hover {
   background: linear-gradient(45deg, #059669, #047857);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
 }
 
 .train-btn.training {
@@ -498,126 +378,87 @@ export default {
   color: #fff;
 }
 
-.training-progress {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  height: 2px;
-  background-color: rgba(255, 255, 255, 0.3);
-  animation: training-pulse 2s ease-in-out infinite;
-}
-
-@keyframes training-pulse {
-  0%, 100% {
-    width: 0%;
-  }
-  50% {
-    width: 100%;
-  }
+.train-btn:disabled:not(.ready) {
+  cursor: not-allowed;
 }
 
 /* Status Section */
 .status-section {
+  margin-left: auto;
   flex-shrink: 0;
 }
 
 .status-indicators {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
+  background-color: #2a2a2a;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid #444;
 }
 
 .status-item {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  font-size: 0.8rem;
-  color: #666;
-}
-
-.status-item.active {
-  color: #10b981;
 }
 
 .status-dot {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background-color: #666;
+  background-color: #444;
+  transition: all 0.3s;
 }
 
 .status-item.active .status-dot {
   background-color: #10b981;
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
-}
-
-.status-text {
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.7);
 }
 
 /* Training Progress Bar */
 .training-progress-bar {
   position: absolute;
-  bottom: 0;
+  bottom: -1px;
   left: 0;
   right: 0;
-  height: 3px;
-  background-color: #333;
+  height: 2px;
+  background-color: transparent;
 }
 
 .progress-fill {
   height: 100%;
   background: linear-gradient(90deg, #10b981, #3b82f6);
   transition: width 0.3s ease;
-  border-radius: 0 3px 3px 0;
+  border-radius: 0 2px 2px 0;
 }
 
 /* Responsive Design */
 @media (max-width: 1200px) {
-  .controls-section {
+  .header-content {
+    flex-wrap: wrap;
     gap: 1rem;
   }
-  
-  .url-input {
-    width: 180px;
+  .controls-section {
+    width: 100%;
+    order: 2;
+    gap: 1rem;
+    justify-content: flex-start;
   }
-  
-  .model-dropdown {
-    min-width: 180px;
+  .status-section {
+    order: 1;
+    margin-left: 0;
   }
 }
 
 @media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
+  .logo-text {
+    display: none;
   }
-  
   .controls-section {
     flex-wrap: wrap;
-    justify-content: center;
   }
-  
-  .status-section {
-    order: -1;
-  }
-  
-  .status-indicators {
-    justify-content: center;
-  }
-  
-  .control-group {
-    min-width: auto;
-  }
-  
-  .url-input {
-    width: 150px;
-  }
-  
-  .model-dropdown {
-    min-width: 150px;
+  .separator {
+    display: none;
   }
 }
 </style>

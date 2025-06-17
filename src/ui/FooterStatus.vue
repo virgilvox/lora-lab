@@ -204,11 +204,12 @@ export default {
   },
   watch: {
     'hardwareInfo.webGPUSupported': {
-      handler(newVal) {
-        if (newVal === false) {
-          this.addNotification('warning', 'WebGPU not supported', 'Training will be significantly slower on CPU')
+      handler(newVal, oldVal) {
+        if (newVal === false && oldVal !== false) {
+          this.addNotification('error', 'WebGPU unavailable', 'GPU acceleration is not available, and training will be significantly slower. Please use a browser that supports WebGPU.');
         }
-      }
+      },
+      immediate: true
     },
     
     memoryPercentage: {
@@ -230,13 +231,8 @@ export default {
     },
 
     checkSystemStatus() {
-      // Check for potential issues
       if (this.totalMemory < 4) {
         this.addNotification('warning', 'Low system memory', 'Training large models may not be possible')
-      }
-      
-      if (!this.hardwareInfo.webGPUSupported) {
-        this.addNotification('error', 'WebGPU unavailable', 'GPU acceleration not available - training will be slow')
       }
     },
 

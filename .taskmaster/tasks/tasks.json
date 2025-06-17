@@ -115,49 +115,68 @@
         "dependencies": [
           1
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
-            "title": "Implement Model Selection Dropdown",
-            "description": "Create a dropdown component within HeaderBar.vue for selecting available models.",
+            "title": "Design HeaderBar.vue Base Structure",
+            "description": "Create the foundational structure for HeaderBar.vue, including semantic HTML, ARIA roles, and keyboard navigation support.",
             "dependencies": [],
-            "details": "Add a dropdown menu to the HeaderBar.vue component using plain JS modules. Populate the dropdown with model options provided by the application context or a static list. Ensure the selected model is tracked in the component's state and emits an event or updates a binding when changed.",
-            "status": "pending",
-            "testStrategy": "Verify that the dropdown renders, displays all model options, and updates the selected model state correctly on user interaction."
+            "details": "Implement a visually accessible header with clear navigation landmarks. Ensure the component is modular and follows best practices for folder and file organization.\n<info added on 2025-06-17T04:17:09.456Z>\nThe HeaderBar.vue component’s foundation is solid, with semantic structure, ARIA roles, and keyboard navigation already in place. To further enhance accessibility, the next steps will focus on:\n\n- Adding or refining ARIA attributes to improve screen reader compatibility, such as using aria-label, aria-labelledby, and aria-describedby for all interactive elements and form controls.\n- Ensuring logical keyboard navigation order and focus management, including using refs and tabIndex where necessary to direct focus appropriately after dynamic updates.\n- Enhancing error state communication by implementing aria-invalid and associating error messages with aria-describedby.\n- Providing more explicit and descriptive labels for all controls, ensuring that both visible and screen reader users can understand their purpose.\n- Reviewing and updating status indicators to ensure they convey changes of state both visually and semantically, possibly using aria-live regions for dynamic updates.\n\nThese improvements will be addressed in subsequent subtasks to ensure the HeaderBar.vue component meets high accessibility standards and provides an inclusive user experience.\n</info added on 2025-06-17T04:17:09.456Z>",
+            "status": "done"
           },
           {
             "id": 2,
-            "title": "Add URL Input Field for Corpus Source",
-            "description": "Integrate a text input field for users to enter a corpus source URL.",
+            "title": "Implement Model Dropdown Logic",
+            "description": "Develop the dropdown menu for model selection with accessible keyboard and screen reader support.",
             "dependencies": [
               1
             ],
-            "details": "Within HeaderBar.vue, add a labeled input field for entering a URL. Validate the input for proper URL format and update the component state on change. Optionally, provide feedback for invalid URLs.",
-            "status": "pending",
-            "testStrategy": "Test that the input accepts valid URLs, rejects invalid ones, and updates the state or emits an event on change."
+            "details": "Handle focus management, ARIA attributes, and edge cases such as empty or invalid model lists. Ensure dropdown is navigable via keyboard and provides clear feedback.",
+            "status": "in-progress"
           },
           {
             "id": 3,
-            "title": "Implement Corpus File Upload Functionality",
-            "description": "Enable users to upload a corpus file and ensure its contents are processed for tokenization.",
+            "title": "Develop URL Input with Validation",
+            "description": "Create a URL input field with real-time validation, error messaging, and accessibility considerations.",
             "dependencies": [
-              2
+              1
             ],
-            "details": "Add a file input to HeaderBar.vue for uploading text files. On file selection, read the file contents using FileReader and trigger tokenization logic. Ensure only supported file types (e.g., .txt) are accepted and handle errors gracefully.",
-            "status": "pending",
-            "testStrategy": "Upload various file types, confirm only valid files are processed, and verify that file contents are correctly read and passed to the tokenization function."
+            "details": "Validate URLs on input and blur events, display accessible error messages, and handle edge cases like malformed URLs or unsupported protocols. Ensure input is labeled for screen readers.",
+            "status": "pending"
           },
           {
             "id": 4,
-            "title": "Add Textarea for Direct Corpus Input and Tokenization",
-            "description": "Provide a textarea for users to paste corpus text and ensure the input is tokenized.",
+            "title": "Build File Upload with Error Handling",
+            "description": "Implement file upload functionality with robust error handling and accessible feedback.",
             "dependencies": [
-              3
+              1
             ],
-            "details": "Insert a textarea into HeaderBar.vue for direct text input. On input or blur, trigger the tokenization logic. Ensure the component state reflects the textarea content and that tokenization results are accessible for downstream processing.",
-            "status": "pending",
-            "testStrategy": "Paste or type text into the textarea, confirm the state updates, and verify that tokenization occurs as expected."
+            "details": "Support drag-and-drop and manual selection, validate file types and sizes, and provide clear, accessible error messages for invalid files or upload failures.",
+            "status": "pending"
+          },
+          {
+            "id": 5,
+            "title": "Create Textarea Input and Tokenization Logic",
+            "description": "Develop a textarea input with live tokenization, character counting, and accessible feedback.",
+            "dependencies": [
+              1
+            ],
+            "details": "Tokenize input text in real time, display token/character counts, and ensure the textarea is accessible with proper labeling and ARIA attributes. Handle edge cases like pasted content and large inputs.",
+            "status": "pending"
+          },
+          {
+            "id": 6,
+            "title": "Integrate Components and Manage State",
+            "description": "Integrate all UI elements, manage shared state, and ensure consistent accessibility and error handling across the interface.",
+            "dependencies": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "details": "Coordinate state between dropdown, URL input, file upload, and textarea. Handle edge cases such as simultaneous errors, conflicting inputs, and ensure all error and status messages are accessible.",
+            "status": "pending"
           }
         ]
       },
@@ -282,45 +301,69 @@
         "subtasks": [
           {
             "id": 1,
-            "title": "Set Up ONNX Runtime Web with WebGPU Execution Provider",
-            "description": "Install and configure ONNX Runtime Web in the project, ensuring WebGPU Execution Provider (EP) is enabled for GPU acceleration.",
+            "title": "ONNX Runtime Web Environment Setup",
+            "description": "Install and configure ONNX Runtime Web, including prerequisites and NPM packages, ensuring compatibility with target browsers.",
             "dependencies": [],
-            "details": "Add the onnxruntime-web package to the project. Import ONNX Runtime Web in `onnxSession.js` and configure it to use the WebGPU EP. Verify WebGPU support in the browser and initialize the ONNX session with the appropriate backend settings. Reference ONNX Runtime Web documentation for correct import and initialization patterns.",
-            "status": "pending",
-            "testStrategy": "Run a simple ONNX model inference in the browser and confirm that WebGPU is being used as the execution provider."
+            "details": "Follow official ONNX Runtime Web installation guides. Set up Node.js (16.0+), install required NPM packages in the appropriate directories, and verify the environment using Chrome and Edge browsers. Document any additional setup steps for other browsers.",
+            "status": "pending"
           },
           {
             "id": 2,
-            "title": "Implement and Register Custom INT4 Matmul WGSL Kernel",
-            "description": "Develop a custom INT4 matrix multiplication kernel in WGSL and register it with ONNX Runtime Web for use in model inference.",
+            "title": "WebGPU Execution Provider Configuration",
+            "description": "Configure the WebGPU Execution Provider (EP) for ONNX Runtime Web, enabling GPU acceleration and verifying support across browsers.",
             "dependencies": [
               1
             ],
-            "details": "Write the INT4 matmul kernel in `loraKernels.wgsl`. Integrate the kernel registration logic into the ONNX Runtime Web initialization flow in `onnxSession.js`. Ensure the kernel is correctly recognized and invoked during relevant model operations.",
-            "status": "pending",
-            "testStrategy": "Create unit tests or a demo model that exercises the INT4 matmul operation and verify correct execution and output."
+            "details": "Enable WebGPU EP in ONNX Runtime Web configuration. Test and document WebGPU support in Chrome, Edge, Firefox, and Safari. Address browser-specific flags or polyfills as needed.",
+            "status": "pending"
           },
           {
             "id": 3,
-            "title": "Integrate IO-Binding and GraphCapture for Efficient GPU Usage",
-            "description": "Enable IO-Binding and GraphCapture features to minimize CPU-GPU data transfers and optimize execution performance.",
+            "title": "Custom Kernel Development for WebGPU",
+            "description": "Design and implement custom GPU kernels tailored for ONNX Runtime Web's WebGPU EP, ensuring optimal performance and correctness.",
             "dependencies": [
               2
             ],
-            "details": "Modify `onnxSession.js` to use IO-Binding for keeping input and output tensors on the GPU. Implement GraphCapture for models with static shapes to further optimize execution. Follow ONNX Runtime Web documentation for correct usage of these features.",
-            "status": "pending",
-            "testStrategy": "Benchmark inference latency and GPU memory usage before and after enabling IO-Binding and GraphCapture to confirm performance improvements."
+            "details": "Develop custom kernels using WGSL or compatible shader languages. Write unit tests for each kernel. Ensure kernels adhere to ONNX Runtime's kernel interface and are compatible with WebGPU constraints.",
+            "status": "pending"
           },
           {
             "id": 4,
-            "title": "Support Adapter and Full Modes in ONNX Session",
-            "description": "Extend the ONNX session logic to support both Adapter and Full modes, ensuring compatibility with different model configurations.",
+            "title": "Kernel Registration and Integration",
+            "description": "Register custom kernels with ONNX Runtime Web, integrating them into the execution provider pipeline.",
             "dependencies": [
               3
             ],
-            "details": "Update `onnxSession.js` to detect and handle both Adapter and Full modes, configuring model inputs, outputs, and execution flow accordingly. Ensure that custom kernels and GPU optimizations are applied consistently in both modes.",
-            "status": "pending",
-            "testStrategy": "Test inference in both Adapter and Full modes with representative models, verifying correctness and performance in each mode."
+            "details": "Implement kernel registration logic, update kernel registry, and verify that custom kernels are discoverable and invoked during model execution. Test integration with sample ONNX models.",
+            "status": "pending"
+          },
+          {
+            "id": 5,
+            "title": "IO-Binding Integration and Validation",
+            "description": "Integrate IO-Binding for efficient data transfer between JavaScript and GPU memory, and validate correctness and performance.",
+            "dependencies": [
+              4
+            ],
+            "details": "Implement IO-Binding APIs for input/output tensors. Benchmark data transfer speeds and validate results against CPU execution. Ensure compatibility with all supported browsers.",
+            "status": "pending"
+          },
+          {
+            "id": 6,
+            "title": "GraphCapture Optimization and Cross-Browser Testing",
+            "description": "Implement and optimize GraphCapture for efficient execution, and perform extensive cross-browser compatibility and performance benchmarking.",
+            "dependencies": [
+              5
+            ],
+            "details": "Enable GraphCapture in ONNX Runtime Web. Profile and optimize graph execution paths. Test and benchmark performance on Chrome, Edge, Firefox, and Safari, documenting any browser-specific issues or optimizations.",
+            "status": "pending"
+          },
+          {
+            "id": 7,
+            "title": "Adapter/Full Mode Support and Comprehensive Testing",
+            "description": "Implement support for both Adapter and Full execution modes, and conduct thorough functional and performance testing across browsers.",
+            "dependencies": [],
+            "details": "Configure ONNX Runtime Web to support both Adapter and Full modes. Develop test suites to validate functionality and measure performance in each mode on all major browsers. Summarize findings and recommend optimizations.",
+            "status": "pending"
           }
         ]
       },
@@ -339,45 +382,61 @@
         "subtasks": [
           {
             "id": 1,
-            "title": "Design and Implement Data Loader Module",
-            "description": "Develop the `datasetLoader.js` module in `src/data/` to handle corpus loading, preprocessing, and tokenization.",
+            "title": "Design Robust Data Loader for Large Datasets",
+            "description": "Architect a data loader capable of efficiently handling large datasets, supporting asynchronous loading, sharding, and batching. Implement mechanisms for error detection, logging, and recovery to ensure resilience during data ingestion.",
             "dependencies": [],
-            "details": "Create functions to load datasets from disk or remote sources, preprocess raw text, and tokenize input using the project's tokenizer. Integrate dual-sequence packing logic and prepare data batches suitable for training. Ensure the loader can handle large datasets efficiently.",
-            "status": "pending",
-            "testStrategy": "Write unit tests to verify correct loading, preprocessing, and tokenization of sample datasets. Test dual-sequence packing with edge cases."
+            "details": "Consider distributed data loading frameworks and defensive programming practices to handle partial failures and retries. Ensure compatibility with downstream preprocessing and training pipelines.",
+            "status": "pending"
           },
           {
             "id": 2,
-            "title": "Implement TF-IDF Curriculum Sampling",
-            "description": "Integrate TF-IDF-based curriculum learning into the data loader to prioritize training samples.",
+            "title": "Implement Tokenization and Preprocessing Pipeline",
+            "description": "Develop a modular pipeline for tokenizing raw text and applying necessary preprocessing steps (e.g., normalization, filtering, augmentation). Ensure the pipeline can process data in parallel and recover from tokenization errors.",
             "dependencies": [
               1
             ],
-            "details": "Calculate TF-IDF scores for dataset samples and implement a sampling strategy that selects or weights samples based on their TF-IDF scores. Expose configuration options for curriculum parameters.",
-            "status": "pending",
-            "testStrategy": "Test that samples are selected or weighted according to TF-IDF scores. Validate curriculum progression over training epochs."
+            "details": "Support batch processing and streaming modes. Log and handle malformed or corrupt data gracefully, skipping or repairing as needed.",
+            "status": "pending"
           },
           {
             "id": 3,
-            "title": "Develop Training Worker Script",
-            "description": "Create `training.worker.js` in `src/workers/` to run model training off the main thread.",
+            "title": "Develop Dual-Sequence Packing Logic",
+            "description": "Create logic to efficiently pack two sequences into a single training example, maximizing utilization of model context windows while minimizing padding and fragmentation.",
             "dependencies": [
               2
             ],
-            "details": "Set up a web worker or Node.js worker thread that receives training configuration and data batches from the main process. Implement message passing for status updates, progress, and results. Ensure the worker can invoke the model training loop using data from the loader.",
-            "status": "pending",
-            "testStrategy": "Test worker initialization, message handling, and correct execution of training steps. Simulate training runs with mock data."
+            "details": "Handle edge cases such as variable-length sequences and ensure compatibility with tokenization output. Implement error handling for packing failures or data inconsistencies.",
+            "status": "pending"
           },
           {
             "id": 4,
-            "title": "Integrate Data Loader with Training Worker",
-            "description": "Connect the data loader and curriculum logic to the training worker for seamless data flow during training.",
+            "title": "Integrate TF-IDF Curriculum Sampling",
+            "description": "Implement curriculum sampling based on TF-IDF scores to prioritize data samples during training. Ensure the sampling logic is efficient and scalable for large datasets.",
             "dependencies": [
               3
             ],
-            "details": "Ensure the training worker requests and receives data batches from the loader as needed. Handle synchronization, error reporting, and resource cleanup. Validate that the training loop uses the correct data and curriculum sampling.",
-            "status": "pending",
-            "testStrategy": "Run end-to-end tests simulating full training sessions, verifying data flow, error handling, and correct integration of all components."
+            "details": "Allow dynamic adjustment of sampling weights and monitor for sampling anomalies. Include fallback strategies if TF-IDF computation fails or data is missing.",
+            "status": "pending"
+          },
+          {
+            "id": 5,
+            "title": "Establish Training Worker Communication and Error Recovery",
+            "description": "Design robust communication protocols between training workers and data loaders, supporting asynchronous data transfer, status reporting, and error propagation.",
+            "dependencies": [
+              4
+            ],
+            "details": "Implement mechanisms for worker recovery, retry logic, and graceful degradation in case of partial system failures. Ensure that communication bottlenecks do not impede training throughput.",
+            "status": "pending"
+          },
+          {
+            "id": 6,
+            "title": "Integration and End-to-End Testing with Large Dataset Simulation",
+            "description": "Integrate all components and conduct comprehensive end-to-end tests, simulating large dataset scenarios and injecting faults to validate error recovery mechanisms.",
+            "dependencies": [
+              5
+            ],
+            "details": "Verify data integrity, throughput, and system robustness under stress. Document test results and iterate on weak points identified during integration.",
+            "status": "pending"
           }
         ]
       },
@@ -555,7 +614,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T02:56:16.391Z",
-      "updated": "2025-06-17T03:28:31.403Z",
+      "updated": "2025-06-17T04:17:21.469Z",
       "description": "Tasks for master context"
     }
   }

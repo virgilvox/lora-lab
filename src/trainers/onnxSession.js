@@ -78,16 +78,35 @@ export async function loadModel(modelUrl, options = {}) {
       executionMode: 'sequential',
     };
 
-    // Load the model
-    const session = await ort.InferenceSession.create(modelUrl, sessionOptions);
+    // Download the model file first
+    console.log('Downloading model...');
+    const response = await fetch(modelUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to download model: ${response.status} ${response.statusText}`);
+    }
+    
+    // Get the total size for progress tracking
+    const contentLength = response.headers.get('content-length');
+    const totalSize = contentLength ? parseInt(contentLength, 10) : 0;
+    
+    // Read the response as ArrayBuffer
+    const modelData = await response.arrayBuffer();
+    
+    console.log(`Model downloaded: ${(modelData.byteLength / (1024 * 1024)).toFixed(2)} MB`);
+
+    // Load the model into ONNX Runtime
+    const session = await ort.InferenceSession.create(modelData, sessionOptions);
     
     // Get model metadata
     const modelInfo = {
       inputNames: session.inputNames,
       outputNames: session.outputNames,
-      executionProviders: session.executionProviders,
+      executionProviders: session.handler._executionProviders || executionProviders.map(p => Array.isArray(p) ? p[0] : p),
       modelUrl,
-      sessionOptions
+      sessionOptions,
+      sizeInBytes: modelData.byteLength,
+      sizeInMB: (modelData.byteLength / (1024 * 1024)).toFixed(2)
     };
 
     console.log('Model loaded successfully:', modelInfo);
@@ -95,7 +114,7 @@ export async function loadModel(modelUrl, options = {}) {
     return {
       session,
       modelInfo,
-      isWebGPU: session.executionProviders.includes('webgpu')
+      isWebGPU: modelInfo.executionProviders.includes('webgpu')
     };
 
   } catch (error) {

@@ -86,7 +86,13 @@ export class ModelManager {
       modelName,
       enableProfiling,
       executionMode,
-      graphOptimizationLevel
+      graphOptimizationLevel,
+      externalFileToURI: options.externalFileToURI || undefined,
+      hfAccessToken: options.hfAccessToken ||
+                      (typeof window !== 'undefined' && (
+                        window.HF_ACCESS_TOKEN ||
+                        localStorage.getItem('HF_ACCESS_TOKEN')
+                      ))
     });
     
     this.loadingPromises.set(modelName, loadingPromise);
@@ -105,20 +111,73 @@ export class ModelManager {
    * Internal model loading implementation
    */
   async _loadModelInternal(modelSource, options) {
-    const { modelName, enableProfiling, executionMode, graphOptimizationLevel } = options;
+    const { modelName, enableProfiling, executionMode, graphOptimizationLevel, hfAccessToken } = options;
     
     try {
       console.log('Loading ONNX model:', modelName);
       
+      // -------------------------------------------------------------------
+      // Step 1: Prepare optional Hugging Face access token if provided
+      // -------------------------------------------------------------------
+      const hfToken = hfAccessToken ||
+                      (typeof window !== 'undefined' && (
+                        window.HF_ACCESS_TOKEN ||
+                        localStorage.getItem('HF_ACCESS_TOKEN')
+                      ));
+
+      const fetchHeaders = hfToken ? { 'Authorization': `Bearer ${hfToken}` } : undefined;
+
       // Convert source to ArrayBuffer if needed
       let modelData;
+      // This needs to be mutable as it may be overridden for URL sources
+      let externalFileToURI = options.externalFileToURI;
+
       if (typeof modelSource === 'string') {
-        // URL
-        const response = await fetch(modelSource);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch model: ${response.statusText}`);
+        // URL – attempt download (optionally with Authorization header)
+
+        const tryFetch = async (withAuth = false) => {
+          const init = withAuth && fetchHeaders ? { headers: fetchHeaders } : undefined;
+          const resp = await fetch(modelSource, init);
+          return resp;
+        };
+
+        let response = await tryFetch(!!hfToken);
+
+        // If unauthorised and we haven't tried auth header yet, retry with token (if present)
+        if (response.status === 401 && !hfToken) {
+          throw new Error('Received 401 Unauthorized while downloading model. The model repository may require accepting a license or using a HuggingFace access token. Please set window.HF_ACCESS_TOKEN or localStorage["HF_ACCESS_TOKEN"].');
         }
+
+        if (response.status === 401 && hfToken) {
+          // Token invalid or lacks permission
+          throw new Error('Provided HuggingFace access token was rejected (401 Unauthorized). Make sure the token has permission for this repository.');
+        }
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch model: ${response.status} ${response.statusText}`);
+        }
+
         modelData = await response.arrayBuffer();
+        
+        // Create a custom fetcher for external data that includes auth headers
+        const modelPath = new URL(modelSource);
+        const basePath = modelPath.href.substring(0, modelPath.href.lastIndexOf('/') + 1);
+        
+        externalFileToURI = async (file) => {
+          const externalDataUrl = new URL(file, basePath).toString();
+          console.log(`Fetching authenticated external ONNX data: ${externalDataUrl}`);
+          
+          const externalResponse = await fetch(externalDataUrl, {
+            headers: fetchHeaders
+          });
+          
+          if (!externalResponse.ok) {
+            throw new Error(`Failed to fetch external ONNX data "${file}": ${externalResponse.status} ${externalResponse.statusText}`);
+          }
+          
+          return externalResponse.arrayBuffer();
+        };
+
       } else if (modelSource instanceof File) {
         // File object
         modelData = await modelSource.arrayBuffer();
@@ -137,7 +196,8 @@ export class ModelManager {
         executionProviders: ['webgpu', 'wasm'],
         enableProfiling,
         executionMode,
-        graphOptimizationLevel
+        graphOptimizationLevel,
+        externalFileToURI: externalFileToURI || undefined
       };
       
       // Create inference session
@@ -196,30 +256,34 @@ export class ModelManager {
       const inputs = [];
       const outputs = [];
       
-      // Extract input information
-      for (const [name, metadata] of Object.entries(session.inputNames.reduce((acc, name) => {
-        acc[name] = session.inputMetadata[name];
-        return acc;
-      }, {}))) {
-        inputs.push({
-          name,
-          type: metadata.type,
-          dims: metadata.dims,
-          shape: metadata.dims
-        });
+      // Extract input information safely
+      for (const name of session.inputNames) {
+        const metadata = session.inputMetadata[name];
+        if (metadata) {
+          inputs.push({
+            name,
+            type: metadata.type,
+            dims: metadata.dims,
+            shape: metadata.dims
+          });
+        } else {
+          inputs.push({ name, type: 'unknown', dims: [], shape: [] });
+        }
       }
       
-      // Extract output information
-      for (const [name, metadata] of Object.entries(session.outputNames.reduce((acc, name) => {
-        acc[name] = session.outputMetadata[name];
-        return acc;
-      }, {}))) {
-        outputs.push({
-          name,
-          type: metadata.type,
-          dims: metadata.dims,
-          shape: metadata.dims
-        });
+      // Extract output information safely
+      for (const name of session.outputNames) {
+        const metadata = session.outputMetadata[name];
+        if (metadata) {
+          outputs.push({
+            name,
+            type: metadata.type,
+            dims: metadata.dims,
+            shape: metadata.dims
+          });
+        } else {
+          outputs.push({ name, type: 'unknown', dims: [], shape: [] });
+        }
       }
       
       // Calculate model size
@@ -366,14 +430,26 @@ export class ModelManager {
         throw new Error(`Model not loaded: ${modelName}`);
       }
       
-      // Convert inputs to ONNX tensors if needed
+      // Convert inputs to ONNX tensors with correct data types
       const onnxInputs = {};
       for (const [name, data] of Object.entries(inputs)) {
         if (data instanceof Tensor) {
           onnxInputs[name] = data;
         } else {
-          // Auto-convert arrays to tensors
-          onnxInputs[name] = new Tensor('float32', data.data || data, data.dims || data.shape);
+          // Determine tensor type based on input name
+          let tensorType = 'float32';
+          if (name.includes('input_ids') || name.includes('mask')) {
+            tensorType = 'int64';
+          }
+          
+          // Create tensor with the appropriate type
+          const tensorData = tensorType === 'int64' ? 
+            new BigInt64Array(data.map(BigInt)) : 
+            new Float32Array(data);
+            
+          const dims = data.dims || [1, data.length];
+
+          onnxInputs[name] = new Tensor(tensorType, tensorData, dims);
         }
       }
       
@@ -543,20 +619,34 @@ export const ModelValidator = {
  * Default model configurations for common models
  */
 export const DefaultModels = {
-  'gpt2-small': {
-    name: 'gpt2-small',
-    url: 'https://huggingface.co/gpt2/resolve/main/onnx/model.onnx',
+  'gemma-2b-it': {
+    name: 'gemma-2b-it',
+    repo_id: 'Xenova/gemma-2b-it',
+    url: 'https://huggingface.co/Xenova/gemma-2b-it/resolve/main/onnx/model.onnx?download=true',
     type: 'language_model',
-    description: 'GPT-2 Small (124M parameters)',
-    recommendedRank: 8
+    description: 'Gemma 2B (Web) - Instruction-tuned model from Xenova.',
+    size: '1.4GB',
+    recommendedRank: 16
   },
-  
-  'distilbert': {
-    name: 'distilbert',
-    url: 'https://huggingface.co/distilbert-base-uncased/resolve/main/onnx/model.onnx',
-    type: 'language_model', 
-    description: 'DistilBERT Base (66M parameters)',
-    recommendedRank: 4
+
+  'phi-2': {
+    name: 'phi-2',
+    repo_id: 'Xenova/phi-2',
+    url: 'https://huggingface.co/Xenova/phi-2/resolve/main/onnx/model.onnx?download=true',
+    type: 'language_model',
+    description: 'Microsoft Phi-2 (Web) - High-quality small language model.',
+    size: '1.5GB',
+    recommendedRank: 16
+  },
+
+  'tinyllama-1.1b': {
+    name: 'tinyllama-1.1b',
+    repo_id: 'Xenova/TinyLlama-1.1B-Chat-v1.0',
+    url: 'https://huggingface.co/Xenova/TinyLlama-1.1B-Chat-v1.0/resolve/main/onnx/model_quantized.onnx?download=true',
+    type: 'language_model',
+    description: 'TinyLlama 1.1B (Web) - Ultra-compact chat model.',
+    size: '0.6GB',
+    recommendedRank: 8
   }
 };
 

@@ -535,7 +535,7 @@ export default {
   height: 100%;
   background-color: #1a1a1a;
   border-radius: 8px;
-  overflow: hidden;
+  overflow-y: auto;
   border: 1px solid #333;
 }
 
