@@ -65,15 +65,15 @@
         "dependencies": [
           1
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
             "title": "Detect WebGPU Support and Request Adapter",
             "description": "Implement logic to check for WebGPU support and request a GPU adapter using navigator.gpu.requestAdapter().",
             "dependencies": [],
-            "details": "In hwDetect.js, check if navigator.gpu exists to determine WebGPU support. If supported, use navigator.gpu.requestAdapter() to obtain a GPUAdapter instance. Handle cases where WebGPU is not available by preparing to use fallback detection methods.",
-            "status": "pending",
+            "details": "In hwDetect.js, check if navigator.gpu exists to determine WebGPU support. If supported, use navigator.gpu.requestAdapter() to obtain a GPUAdapter instance. Handle cases where WebGPU is not available by preparing to use fallback detection methods.\n<info added on 2025-06-17T03:26:57.269Z>\nCreate or open src/utils/hwDetect.js and implement a function named detectWebGPU. This function should:\n\n- Check if navigator.gpu exists to determine WebGPU support in the browser.\n- If supported, asynchronously call navigator.gpu.requestAdapter() to obtain a GPUAdapter instance.\n- If navigator.gpu is not available, prepare for fallback detection methods (to be implemented in later subtasks).\n- Return a Promise that resolves to the adapter if available, or null if not.\n- Include error handling and comments for clarity.\n- Export the detectWebGPU function for use in other modules.\n\nAfter implementing, test the function in browsers with and without WebGPU support to ensure correct detection and error handling.\n</info added on 2025-06-17T03:26:57.269Z>",
+            "status": "done",
             "testStrategy": "Test in browsers with and without WebGPU support. Confirm correct detection and error handling."
           },
           {
@@ -81,8 +81,8 @@
             "title": "Extract GPU Information and Estimate TFLOPs",
             "description": "Retrieve GPU details from the adapter and estimate theoretical TFLOPs if possible.",
             "dependencies": [],
-            "details": "From the GPUAdapter, extract available properties such as name, features, and limits. If possible, use these details to estimate the GPU's theoretical TFLOPs. If direct TFLOPs estimation is not feasible, document the limitation and provide the most relevant available metrics.",
-            "status": "pending",
+            "details": "From the GPUAdapter, extract available properties such as name, features, and limits. If possible, use these details to estimate the GPU's theoretical TFLOPs. If direct TFLOPs estimation is not feasible, document the limitation and provide the most relevant available metrics.\n<info added on 2025-06-17T03:27:18.595Z>\nAfter obtaining the GPUAdapter in src/utils/hwDetect.js, extract its name, features, and limits properties. Use adapter.limits to access values like maxComputeUnits and maxWorkgroupSize if available. Attempt to estimate theoretical TFLOPs using these properties and, if possible, by matching the adapter's name or vendor/architecture info to known GPU models (e.g., Apple M1, NVIDIA RTX series). If TFLOPs estimation is not feasible due to insufficient data, document this limitation and instead provide the most relevant metrics such as maxComputeUnits and maxWorkgroupSize. Export a getGPUInfo function that returns an object containing the GPU name, features, limits, and estimated TFLOPs (if possible). Ensure robust error handling and include clear comments throughout the implementation. After coding, test the extraction and estimation logic in multiple browsers and on different GPUs to verify accuracy and compatibility.\n</info added on 2025-06-17T03:27:18.595Z>",
+            "status": "done",
             "testStrategy": "Verify that GPU information is correctly extracted and TFLOPs estimation logic works as expected for known devices."
           },
           {
@@ -90,8 +90,8 @@
             "title": "Detect CPU and Device Memory Capabilities",
             "description": "Implement fallback detection for CPU and device memory using navigator.deviceMemory and other available APIs.",
             "dependencies": [],
-            "details": "If WebGPU is unavailable or insufficient, use navigator.deviceMemory to estimate available RAM. Optionally, use other browser APIs to infer CPU capabilities (such as navigator.hardwareConcurrency for logical cores). Ensure fallback logic is robust and provides meaningful estimates.",
-            "status": "pending",
+            "details": "If WebGPU is unavailable or insufficient, use navigator.deviceMemory to estimate available RAM. Optionally, use other browser APIs to infer CPU capabilities (such as navigator.hardwareConcurrency for logical cores). Ensure fallback logic is robust and provides meaningful estimates.\n<info added on 2025-06-17T03:27:46.918Z>\nImplementation plan for 'Detect CPU and Device Memory Capabilities':\n\n- In src/utils/hwDetect.js, implement detection logic for device memory and CPU capabilities as a fallback when WebGPU is unavailable or insufficient.\n- Use navigator.deviceMemory to estimate available RAM in gigabytes. If navigator.deviceMemory is not available, default to a reasonable value such as 4GB. Note that navigator.deviceMemory provides an approximate value, rounded down to the nearest power of two, and is only available in secure contexts (HTTPS) in supporting browsers.\n- Use navigator.hardwareConcurrency to retrieve the number of logical CPU cores. If unavailable, provide a sensible default (e.g., 2 or 4).\n- Optionally, check for additional CPU details using other browser APIs if available.\n- Export functions such as getDeviceMemory and getCPUInfo that return structured data with RAM and CPU information.\n- Ensure robust fallback logic to provide meaningful estimates across a wide range of devices and browsers, including those that do not support these APIs.\n- Add error handling and clear comments throughout the code for maintainability and clarity.\n- After implementation, test these functions in browsers with and without WebGPU support, and on devices with varying memory and CPU configurations to ensure reliability and accuracy.\n</info added on 2025-06-17T03:27:46.918Z>",
+            "status": "done",
             "testStrategy": "Test fallback detection on devices without WebGPU support and confirm accurate memory and CPU reporting."
           },
           {
@@ -99,8 +99,8 @@
             "title": "Expose Hardware Info Retrieval Functions",
             "description": "Design and implement functions in hwDetect.js to expose GPU info, TFLOPs, and memory estimates for use elsewhere in the application.",
             "dependencies": [],
-            "details": "Create and export functions such as getGPUInfo(), getTFLOPsEstimate(), and getDeviceMemory(). Ensure these functions return consistent, structured data regardless of detection path (WebGPU or fallback). Document the API for consumers.",
-            "status": "pending",
+            "details": "Create and export functions such as getGPUInfo(), getTFLOPsEstimate(), and getDeviceMemory(). Ensure these functions return consistent, structured data regardless of detection path (WebGPU or fallback). Document the API for consumers.\n<info added on 2025-06-17T03:28:17.769Z>\nDesign and implement the hardware info retrieval functions in src/utils/hwDetect.js, ensuring the following:\n\n- Implement getGPUInfo(), getTFLOPsEstimate(), and getDeviceMemory() to abstract hardware detection via WebGPU or fallback methods.\n- Each function should return structured, consistent objects regardless of detection path, with fields such as vendor, architecture, estimated performance, and memory size.\n- Include robust error handling for unsupported browsers or unavailable hardware, returning clear error objects or default values.\n- Document the API for each function, specifying input parameters, return structure, and usage examples for consumers.\n- Add comprehensive inline comments to clarify logic and maintainability.\n- Develop unit tests simulating various hardware and browser scenarios to verify correct and consistent function outputs.\n</info added on 2025-06-17T03:28:17.769Z>",
+            "status": "done",
             "testStrategy": "Write unit tests to verify that each function returns expected results in various hardware/browser scenarios."
           }
         ]
@@ -555,7 +555,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T02:56:16.391Z",
-      "updated": "2025-06-17T03:10:37.747Z",
+      "updated": "2025-06-17T03:28:31.403Z",
       "description": "Tasks for master context"
     }
   }
