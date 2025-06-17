@@ -77,7 +77,7 @@
           </div>
           
           <div class="message-text">
-            {{ message.content }}
+            <span v-html="message.content.replace(/\n/g, '<br>')"></span>
           </div>
           
           <!-- Message Actions -->
@@ -166,6 +166,8 @@
 </template>
 
 <script>
+import { modelManager } from '../utils/modelManager.js'
+
 export default {
   name: 'ChatPanel',
   props: {
@@ -190,7 +192,7 @@ export default {
       default: () => []
     }
   },
-  emits: ['toggle-lora', 'message-sent', 'message-regenerated', 'message-rated'],
+  emits: ['toggle-lora', 'message-sent', 'message-regenerated', 'message-rated', 'new-message', 'interrupt-generation'],
   data() {
     return {
       inputMessage: '',
@@ -223,17 +225,28 @@ export default {
     this.adjustTextareaHeight()
   },
   watch: {
-    messages: {
+    'messages': {
       handler() {
         this.$nextTick(() => {
           this.scrollToBottom()
         })
       },
       deep: true
+    },
+    // Watch for content changes in any message to force updates
+    'messages.*.content': {
+      handler() {
+        this.scrollToBottom()
+      }
     }
   },
   methods: {
     sendMessage() {
+      if (this.isTyping) {
+        // If already generating, emit an interrupt event
+        this.$emit('interrupt-generation');
+        return;
+      }
       if (!this.canSend) return
       
       const message = this.inputMessage.trim()

@@ -1,334 +1,96 @@
 /**
  * ONNX Runtime Web Session Management for LoRA Lab
- * Handles model loading, WebGPU configuration, and training sessions
+ * Handles WebGPU configuration and training session initialization
  */
 
-import * as ort from 'onnxruntime-web';
+// NOTE: The direct import of 'onnxruntime-web' has been removed to avoid
+// conflicts with Transformers.js's internal ONNX Runtime management.
+// The training engine will need to be adapted to work with this change,
+// potentially by receiving the 'ort' object from a single, centralized
+// initialization point.
 
-// Configure ONNX Runtime for WebGPU
-ort.env.wasm.simd = true;
-ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4;
-
-// WebGPU execution provider options
-const webgpuOptions = {
+// Default WebGPU execution provider options
+export const webgpuOptions = {
   deviceType: 'gpu',
   powerPreference: 'high-performance',
 };
 
 /**
- * Initialize ONNX Runtime with WebGPU support
- * @returns {Promise<boolean>} Success status
+ * Create a new ONNX Inference Session for training or inference.
+ * This function assumes initializeONNX has been called.
+ * @param {ArrayBuffer} modelData - The ONNX model data as an ArrayBuffer.
+ * @param {Object} options - Session configuration options.
+ * @returns {Promise<ort.InferenceSession>} The created inference session.
  */
-export async function initializeONNX() {
-  try {
-    console.log('Initializing ONNX Runtime with WebGPU...');
-    
-    // Check WebGPU support
-    if (!navigator.gpu) {
-      console.warn('WebGPU not supported, falling back to WASM');
-      return false;
-    }
-
-    // Test WebGPU adapter
-    const adapter = await navigator.gpu.requestAdapter();
-    if (!adapter) {
-      console.warn('No WebGPU adapter available, falling back to WASM');
-      return false;
-    }
-
-    console.log('WebGPU adapter found:', adapter);
-    return true;
-  } catch (error) {
-    console.error('ONNX Runtime initialization failed:', error);
-    return false;
-  }
-}
-
-/**
- * Load a model from URL or local file
- * @param {string} modelUrl - URL or path to the ONNX model
- * @param {Object} options - Loading options
- * @returns {Promise<Object>} Model information and session
- */
-export async function loadModel(modelUrl, options = {}) {
+export async function createONNXSession(modelData, options = {}) {
   const {
-    useWebGPU = true,
     enableProfiling = false,
-    optimizeModel = true
+    optimizeModel = true,
+    executionMode = 'sequential'
   } = options;
 
   try {
-    console.log('Loading model from:', modelUrl);
-
-    // Determine execution providers
-    const executionProviders = [];
-    
-    if (useWebGPU && await initializeONNX()) {
-      executionProviders.push(['webgpu', webgpuOptions]);
-    }
-    
-    // Always add WASM as fallback
-    executionProviders.push(['wasm']);
-
-    // Session options
     const sessionOptions = {
-      executionProviders,
       enableProfiling,
       graphOptimizationLevel: optimizeModel ? 'all' : 'disabled',
-      executionMode: 'sequential',
+      executionMode,
     };
-
-    // Download the model file first
-    console.log('Downloading model...');
-    const response = await fetch(modelUrl);
     
-    if (!response.ok) {
-      throw new Error(`Failed to download model: ${response.status} ${response.statusText}`);
-    }
-    
-    // Get the total size for progress tracking
-    const contentLength = response.headers.get('content-length');
-    const totalSize = contentLength ? parseInt(contentLength, 10) : 0;
-    
-    // Read the response as ArrayBuffer
-    const modelData = await response.arrayBuffer();
-    
-    console.log(`Model downloaded: ${(modelData.byteLength / (1024 * 1024)).toFixed(2)} MB`);
-
-    // Load the model into ONNX Runtime
     const session = await ort.InferenceSession.create(modelData, sessionOptions);
-    
-    // Get model metadata
-    const modelInfo = {
-      inputNames: session.inputNames,
-      outputNames: session.outputNames,
-      executionProviders: session.handler._executionProviders || executionProviders.map(p => Array.isArray(p) ? p[0] : p),
-      modelUrl,
-      sessionOptions,
-      sizeInBytes: modelData.byteLength,
-      sizeInMB: (modelData.byteLength / (1024 * 1024)).toFixed(2)
-    };
-
-    console.log('Model loaded successfully:', modelInfo);
-    
-    return {
-      session,
-      modelInfo,
-      isWebGPU: modelInfo.executionProviders.includes('webgpu')
-    };
+    console.log('ONNX Inference Session created successfully.');
+    return session;
 
   } catch (error) {
-    console.error('Model loading failed:', error);
-    throw new Error(`Failed to load model: ${error.message}`);
+    console.error('ONNX Session creation failed:', error);
+    throw new Error(`Failed to create ONNX session: ${error.message}`);
   }
 }
 
 /**
- * Create a training session (preparation for future training implementation)
- * @param {string} modelUrl - Training model URL
- * @param {Object} trainingConfig - Training configuration
- * @returns {Promise<Object>} Training session info
+ * Get a list of supported execution providers on the current device.
+ * @returns {Promise<string[]>} A list of available provider names.
  */
-export async function createTrainingSession(modelUrl, trainingConfig) {
-  const {
-    mode = 'adapter',
-    learningRate = 1e-4,
-    batchSize = 1,
-    sequenceLength = 512,
-    adapterConfig = { rank: 4, alpha: 8 }
-  } = trainingConfig;
-
-  try {
-    console.log('Creating training session for mode:', mode);
-
-    // Load the base model for inference
-    const { session, modelInfo, isWebGPU } = await loadModel(modelUrl, {
-      useWebGPU: true,
-      enableProfiling: true,
-      optimizeModel: true
-    });
-
-    // Training session configuration
-    const trainingSession = {
-      baseSession: session,
-      modelInfo,
-      isWebGPU,
-      mode,
-      config: {
-        learningRate,
-        batchSize,
-        sequenceLength,
-        adapterConfig
-      },
-      status: 'initialized',
-      createdAt: Date.now()
-    };
-
-    // Initialize adapter layers if in adapter mode
-    if (mode === 'adapter') {
-      trainingSession.adapterLayers = await initializeAdapterLayers(
-        modelInfo,
-        adapterConfig
-      );
+export async function getSupportedProviders() {
+  const providers = [];
+  if (navigator.gpu) {
+    try {
+      if (await navigator.gpu.requestAdapter()) {
+        providers.push('webgpu');
+      }
+    } catch (e) {
+      console.warn('WebGPU check failed:', e);
     }
-
-    console.log('Training session created:', trainingSession);
-    return trainingSession;
-
-  } catch (error) {
-    console.error('Training session creation failed:', error);
-    throw new Error(`Failed to create training session: ${error.message}`);
   }
+  providers.push('wasm');
+  return providers;
 }
 
 /**
- * Initialize LoRA adapter layers
- * @param {Object} modelInfo - Model information
- * @param {Object} adapterConfig - Adapter configuration
- * @returns {Promise<Object>} Adapter layer configuration
- */
-async function initializeAdapterLayers(modelInfo, adapterConfig) {
-  const { rank, alpha } = adapterConfig;
-  
-  // This is a simplified implementation
-  // In a full implementation, this would analyze the model architecture
-  // and create appropriate LoRA matrices for each layer
-  
-  const adapterLayers = {
-    rank,
-    alpha,
-    scaling: alpha / rank,
-    layers: {},
-    totalParams: 0
-  };
-
-  // Simulate adapter layer initialization
-  // In reality, this would inspect the model graph and identify linear layers
-  const estimatedLayers = 32; // Typical for small language models
-  
-  for (let i = 0; i < estimatedLayers; i++) {
-    const layerName = `layer_${i}`;
-    const hiddenSize = 768; // Typical hidden size
-    
-    adapterLayers.layers[layerName] = {
-      A: { shape: [hiddenSize, rank], initialized: false },
-      B: { shape: [rank, hiddenSize], initialized: false },
-      paramCount: hiddenSize * rank * 2
-    };
-    
-    adapterLayers.totalParams += hiddenSize * rank * 2;
-  }
-
-  console.log(`Initialized ${estimatedLayers} adapter layers with ${adapterLayers.totalParams} parameters`);
-  return adapterLayers;
-}
-
-/**
- * Run inference on a model session
- * @param {Object} session - ONNX session
+ * Run inference on an ONNX session
+ * @param {ort.InferenceSession} session - The ONNX session
  * @param {Object} inputs - Input tensors
  * @returns {Promise<Object>} Output tensors
  */
 export async function runInference(session, inputs) {
   try {
-    const feeds = {};
-    
-    // Convert inputs to ONNX tensors
-    for (const [name, data] of Object.entries(inputs)) {
-      if (Array.isArray(data)) {
-        feeds[name] = new ort.Tensor('int64', new BigInt64Array(data.map(x => BigInt(x))), [data.length]);
-      } else if (data instanceof Float32Array) {
-        feeds[name] = new ort.Tensor('float32', data, [data.length]);
-      } else {
-        feeds[name] = data; // Assume it's already a tensor
-      }
-    }
-
-    // Run inference
-    const results = await session.run(feeds);
-    
-    return results;
+    return await session.run(inputs);
   } catch (error) {
-    console.error('Inference failed:', error);
-    throw new Error(`Inference failed: ${error.message}`);
+    console.error('ONNX inference failed:', error);
+    throw new Error(`Failed to run inference: ${error.message}`);
   }
 }
 
 /**
- * Estimate model memory usage
- * @param {Object} modelInfo - Model information
- * @param {Object} config - Training configuration
- * @returns {Object} Memory estimates
+ * Dispose of an ONNX session
+ * @param {ort.InferenceSession} session - The ONNX session to dispose
  */
-export function estimateMemoryUsage(modelInfo, config) {
-  const { batchSize = 1, sequenceLength = 512 } = config;
-  
-  // Rough estimates based on typical model sizes
-  const baseModelMemoryMB = 2000; // ~2GB for typical small models
-  const activationMemoryMB = (batchSize * sequenceLength * 768 * 4) / (1024 * 1024); // Float32
-  const adapterMemoryMB = 50; // Typical adapter size
-  
-  const totalMemoryMB = baseModelMemoryMB + activationMemoryMB + adapterMemoryMB;
-  
-  return {
-    baseModel: baseModelMemoryMB,
-    activations: activationMemoryMB,
-    adapters: adapterMemoryMB,
-    total: totalMemoryMB,
-    totalGB: totalMemoryMB / 1024
-  };
-}
-
-/**
- * Dispose of ONNX session and free memory
- * @param {Object} sessionData - Session data to dispose
- */
-export async function disposeSession(sessionData) {
-  try {
-    if (sessionData.session) {
-      await sessionData.session.release();
-    }
-    if (sessionData.baseSession) {
-      await sessionData.baseSession.release();
-    }
-    console.log('Session disposed successfully');
-  } catch (error) {
-    console.error('Session disposal failed:', error);
-  }
-}
-
-/**
- * Get supported execution providers
- * @returns {Promise<Array>} List of available execution providers
- */
-export async function getSupportedProviders() {
-  const providers = [];
-  
-  // Check WebGPU support
-  if (navigator.gpu) {
+export async function disposeSession(session) {
+  if (session) {
     try {
-      const adapter = await navigator.gpu.requestAdapter();
-      if (adapter) {
-        providers.push('webgpu');
-      }
+      await session.release();
+      console.log('ONNX session disposed');
     } catch (error) {
-      console.warn('WebGPU check failed:', error);
+      console.error('Failed to dispose ONNX session:', error);
     }
   }
-  
-  // WASM is always available
-  providers.push('wasm');
-  
-  return providers;
 }
-
-// Export default object for easier imports
-export default {
-  initializeONNX,
-  loadModel,
-  createTrainingSession,
-  runInference,
-  estimateMemoryUsage,
-  disposeSession,
-  getSupportedProviders
-};

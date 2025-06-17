@@ -33,7 +33,7 @@
               v-if="selectedModel?.id === 'custom'"
               v-model="customModelUrl"
               type="url"
-              placeholder="Enter ONNX model URL"
+              placeholder="Enter model ID (e.g., Xenova/model-name)"
               class="url-input"
               :disabled="isTraining"
             />

@@ -29,6 +29,7 @@
           :messages="chatHistory"
           @toggle-lora="useLoRA = !useLoRA"
           @message-sent="handleChatMessage"
+          @interrupt-generation="handleInterruptGeneration"
           @chat-cleared="chatHistory = []"
         />
       </div>
@@ -40,12 +41,12 @@
           :hardwareInfo="hardwareInfo"
           :isTraining="isTraining"
           ref="trainConsole"
-          @training-started="handleTrainingStarted"
-          @training-paused="handleTrainingPaused"
-          @training-resumed="handleTrainingResumed"
-          @training-stopped="handleTrainingStopped"
-          @training-aborted="handleTrainingAborted"
-          @training-completed="handleTrainingCompleted"
+          @start-training="handleTrainingStarted"
+          @pause-training="handleTrainingPaused"
+          @resume-training="handleTrainingResumed"
+          @stop-training="handleTrainingStopped"
+          @abort-training="handleTrainingAborted"
+          @reset-training="handleTrainingCompleted"
         />
       </div>
     </div>
@@ -155,7 +156,10 @@
           <button @click="showTokenModal = false" class="close-btn">×</button>
         </div>
         <div class="modal-body">
-          <p class="modal-description">This model requires a Hugging Face access token for download. Please create a token with 'read' permissions and paste it below.</p>
+          <p v-if="!tokenError" class="modal-description">This model requires a Hugging Face access token for download. Please create a token with 'read' permissions and paste it below.</p>
+          <div v-if="tokenError" class="token-error-message">
+            {{ tokenError }}
+          </div>
           <div class="input-method">
             <h4>Access Token</h4>
             <input 
@@ -186,10 +190,9 @@ import FooterStatus from './FooterStatus.vue'
 import PlanModal from './PlanModal.vue'
 import { detectHardware } from '../utils/hwDetect.js'
 import { loadDataset, tokenizeText } from '../data/datasetLoader.js'
-import { runInference, loadModel } from '../trainers/onnxSession.js'
-import { generateTextFromOutputs } from '../utils/textGeneration.js'
-import { modelManager, DefaultModels } from '../utils/modelManager.js'
+import { modelManager, RecommendedModels } from '../utils/modelManager.js'
 import { AutoTokenizer } from '@huggingface/transformers'
+import { trainingEngine } from '../trainers/trainingEngine.js'
 
 export default {
   name: 'LoRALabApp',
@@ -212,8 +215,6 @@ export default {
 
       // Model Management
       selectedModel: null,
-      modelSession: null, // Store the ONNX session here
-      tokenizer: null, // Store the tokenizer here
       modelOptions: [],
 
       // Corpus Management
@@ -229,12 +230,22 @@ export default {
       selectedTrainingMode: null,
 
       // Training State
-      isTraining: false,
+      trainingCompleted: false,
       trainingStatus: {
         mode: null,
         progress: 0,
         eta: null,
-        throughput: 0
+        throughput: 0,
+        tokensProcessed: 0,
+        totalTokens: 1000000,
+        currentStep: 0,
+        totalSteps: 1000,
+        currentLoss: 0,
+        memoryUsage: 2.3,
+        learningRate: '3e-4',
+        batchSize: 4,
+        loraRank: 4,
+        lossHistory: []
       },
 
       // Adapter Management
@@ -250,6 +261,7 @@ export default {
       showTokenModal: false,
       hfToken: '',
       modelToRetry: null,
+      tokenError: '',
 
       // Training Simulation
       trainingInterval: null,
@@ -258,11 +270,17 @@ export default {
   },
   computed: {
     canStartTraining() {
-      return !this.isTraining && 
+      return !this.trainingStatus.isTraining && 
              this.selectedModel && 
              this.corpusInfo && 
              this.selectedTrainingMode &&
              this.hardwareInfo.webGPUSupported
+    },
+    isTraining() {
+      return this.trainingStatus.isTraining || false;
+    },
+    isPaused() {
+      return this.trainingStatus.isPaused || false;
     }
   },
   async mounted() {
@@ -346,6 +364,10 @@ export default {
         this.isLoading = false;
         this.loadingProgress = 0;
         this.loadingDetails = '';
+
+        // Initialize Training Engine Listeners
+        this.setupTrainingEngineListeners();
+
       } catch (error) {
         console.error('Failed to initialize app:', error);
         this.loadingDetails = `Error: ${error.message}`;
@@ -355,24 +377,95 @@ export default {
       }
     },
 
+    setupTrainingEngineListeners() {
+      trainingEngine.on('trainingProgress', (progressData) => {
+        this.trainingStatus = { ...this.trainingStatus, ...progressData };
+      });
+
+      trainingEngine.on('trainingStarted', (data) => {
+        this.trainingCompleted = false;
+        // Update training status instead of computed properties
+        this.trainingStatus = { 
+          ...this.trainingStatus, 
+          ...data, 
+          isTraining: true, 
+          isPaused: false 
+        };
+      });
+
+      trainingEngine.on('trainingPaused', () => {
+        // Update training status instead of computed properties
+        this.trainingStatus = { 
+          ...this.trainingStatus, 
+          isTraining: false, 
+          isPaused: true 
+        };
+      });
+      
+      trainingEngine.on('trainingResumed', () => {
+        // Update training status instead of computed properties
+        this.trainingStatus = { 
+          ...this.trainingStatus, 
+          isTraining: true, 
+          isPaused: false 
+        };
+      });
+
+      trainingEngine.on('trainingStopped', (data) => {
+        this.trainingCompleted = true;
+        // Update training status instead of computed properties
+        this.trainingStatus = { 
+          ...this.trainingStatus, 
+          ...data, 
+          isTraining: false, 
+          isPaused: false 
+        };
+      });
+
+      trainingEngine.on('trainingCompleted', (data) => {
+        this.trainingCompleted = true;
+        this.adapterReady = true;
+        this.adapterLoaded = true;
+        // Update training status instead of computed properties
+        this.trainingStatus = { 
+          ...this.trainingStatus, 
+          ...data, 
+          isTraining: false, 
+          isPaused: false 
+        };
+      });
+      
+      trainingEngine.on('error', (errorData) => {
+        console.error('Training Engine Error:', errorData);
+        // Update training status instead of computed properties
+        this.trainingStatus = { 
+          ...this.trainingStatus, 
+          isTraining: false, 
+          isPaused: false 
+        };
+        // Optionally show an error to the user
+      });
+    },
+
     initializeModelOptions() {
-      // Use DefaultModels from modelManager as the source of truth
-      const models = Object.values(DefaultModels).map(model => ({
-        id: model.name,
-        name: model.description, // Use the more descriptive name
-        size: 'Unknown', // Placeholder, will be determined on load
-        url: model.url,
+      // Use RecommendedModels from modelManager as the source of truth
+      const models = Object.entries(RecommendedModels).map(([key, model]) => ({
+        id: key,
+        name: model.name,
+        size: model.size,
+        modelId: model.modelId,
         description: model.description,
-        repo_id: model.repo_id
+        supportsChat: model.supportsChat,
+        requiresWebGPU: model.requiresWebGPU || false
       }));
       
       // Add the custom URL option
       models.push({
         id: 'custom',
-        name: 'Custom Model URL',
+        name: 'Custom Model ID',
         size: 'Variable',
-        url: '',
-        description: 'Load from a custom ONNX model URL.'
+        modelId: '',
+        description: 'Load a custom model from Hugging Face (e.g., Xenova/model-name)'
       });
 
       this.modelOptions = models;
@@ -391,181 +484,79 @@ export default {
     async handleModelSelected(model) {
       if (model.id === 'custom') {
         this.selectedModel = model;
-        this.modelSession = null;
-        this.tokenizer = null;
         return;
       }
       
       this.isLoading = true;
       this.loadingMessage = `Loading model: ${model.name}`;
       this.loadingProgress = 0;
-      this.loadingDetails = `Preparing to download model (${model.size})`;
-      let loadingInterval = null;
-      
-      try {
-        // Unload previous model if one is loaded
-        if (this.selectedModel && this.selectedModel.id) {
-          this.loadingDetails = `Unloading previous model: ${this.selectedModel.name}...`;
-          await modelManager.unloadModel(this.selectedModel.id);
-          this.modelSession = null;
-          this.tokenizer = null;
-          console.log(`Unloaded ${this.selectedModel.id}`);
-        }
+      this.loadingDetails = `Requesting model from worker...`;
 
-        // Simulate progress for model loading
-        let progress = 0;
-        loadingInterval = setInterval(() => {
-          progress += 5;
-          if (progress <= 95) {
-            this.loadingProgress = progress;
-            if (progress < 40) {
-              this.loadingDetails = `Downloading model...`;
-            } else if (progress < 80) {
-              this.loadingDetails = `Initializing model session...`;
-            } else {
-              this.loadingDetails = `Loading tokenizer...`;
+      try {
+        const modelInfo = await modelManager.loadModel(model.modelId, {
+          onProgress: (progress) => {
+            this.loadingProgress = progress.percentage || (progress.loaded / progress.total * 100) || this.loadingProgress;
+            this.loadingDetails = progress.file || `Loading ${progress.status}...`;
+            if (progress.status === 'ready') {
+              this.loadingMessage = "Model loaded!";
             }
           }
-        }, 200);
-
-        // Use modelManager to load the model
-        this.loadingDetails = `Downloading model...`
-        const modelInfo = await modelManager.loadModel(model.url, {
-          modelName: model.id,
-          enableProfiling: false
         });
-        
-        // Load tokenizer
-        this.loadingDetails = `Loading tokenizer...`
-        const hfToken = localStorage.getItem('HF_ACCESS_TOKEN');
-        const tokenizerOptions = hfToken ? { token: hfToken } : {};
-        this.tokenizer = await AutoTokenizer.from_pretrained(model.repo_id, tokenizerOptions);
-        
-        // Store the model session for inference
-        this.modelSession = modelInfo.session;
-        
-        // Update UI
-        clearInterval(loadingInterval);
+
         this.selectedModel = { 
           ...model,
-          modelInfo,
-          isWebGPU: modelInfo.executionProviders?.includes('webgpu') || false
+          ...modelInfo
         };
         
         this.loadingProgress = 100;
         this.loadingDetails = `Model loaded successfully!`;
         
-        // Show completion for a moment before closing
         setTimeout(() => {
           this.isLoading = false;
-          this.loadingProgress = 0;
-          this.loadingDetails = '';
         }, 500);
+
       } catch (error) {
         console.error('Model loading failed:', error);
-        if (loadingInterval) {
-          clearInterval(loadingInterval);
-        }
-        
-        if (error.message.includes('401 Unauthorized')) {
-          this.modelToRetry = model;
-          this.showTokenModal = true;
-          this.loadingDetails = `Access token required for ${model.name}.`;
-          this.isLoading = false; // Stop loading spinner to show modal
-          return;
-        }
-        
         this.loadingDetails = `Error: ${error.message}`;
-        
-        // Show error for a moment before closing
         setTimeout(() => {
           this.isLoading = false;
-          this.loadingProgress = 0;
-          this.loadingDetails = '';
         }, 2000);
       }
     },
 
-    async handleLoadModelUrl(url) {
+    async handleLoadModelUrl(modelId) {
       this.isLoading = true;
       this.loadingMessage = 'Loading custom model';
       this.loadingProgress = 0;
-      this.loadingDetails = `Preparing to fetch model from URL`;
+      this.loadingDetails = `Requesting model: ${modelId}`;
       
       try {
-        // Progress updates
-        let progress = 0;
-        const loadingInterval = setInterval(() => {
-          progress += Math.random() * 2;
-          if (progress <= 95) { // Cap at 95% until actual loading completes
-            this.loadingProgress = progress;
-            
-            // Update loading details with different stages
-            if (progress < 30) {
-              this.loadingDetails = `Downloading model from ${url.substring(0, 40)}...`;
-            } else if (progress < 60) {
-              this.loadingDetails = `Processing model files (estimating size)`;
-            } else if (progress < 90) {
-              this.loadingDetails = `Initializing ONNX runtime for custom model`;
-            } else {
-              this.loadingDetails = `Finalizing model setup`;
+        const modelInfo = await modelManager.loadModel(modelId, {
+          onProgress: (progress) => {
+             this.loadingProgress = progress.percentage || (progress.loaded / progress.total * 100) || this.loadingProgress;
+            this.loadingDetails = progress.file || `Loading ${progress.status}...`;
+             if (progress.status === 'ready') {
+              this.loadingMessage = "Model loaded!";
             }
           }
-        }, 100);
-        
-        // Use modelManager to load custom model
-        const modelInfo = await modelManager.loadModel(url, {
-          modelName: 'custom-model-' + Date.now(),
-          enableProfiling: false
         });
         
-        // For custom models, we can't automatically know the tokenizer.
-        // We'll have to rely on a generic one or ask the user.
-        // For now, let's try a generic one.
-        this.loadingDetails = `Loading generic tokenizer...`
-        this.tokenizer = await AutoTokenizer.from_pretrained('gpt2');
-        
-        // Store the model session for inference
-        this.modelSession = modelInfo.session;
-        
-        // Update UI
-        clearInterval(loadingInterval);
-        this.loadingProgress = 100;
-        this.loadingMessage = 'Model loaded successfully';
-        this.loadingDetails = `Custom model loaded and ready for use`;
-        
-        // Set model info
         this.selectedModel = {
-          id: 'custom-loaded',
-          name: 'Custom Model',
-          size: `${modelInfo.sizeInMB}MB` || 'Unknown',
-          url: url,
-          description: 'Custom ONNX model',
-          modelInfo,
-          isWebGPU: modelInfo.executionProviders?.includes('webgpu') || false
+          id: modelInfo.modelId,
+          name: modelInfo.modelId,
+          modelId: modelId,
+          ...modelInfo,
         };
         
-        // Wait a moment to show completion
+        this.loadingProgress = 100;
+        this.loadingDetails = `Custom model loaded and ready for use`;
+        
         setTimeout(() => {
           this.isLoading = false;
-          this.loadingProgress = 0;
-          this.loadingDetails = '';
         }, 500);
       } catch (error) {
         console.error('Failed to load model:', error);
-
-        if (error.message.includes('401 Unauthorized')) {
-          this.modelToRetry = { id: 'custom', name: 'Custom Model', url: url };
-          this.showTokenModal = true;
-          this.loadingDetails = `Access token required for custom model.`;
-          this.isLoading = false; // Stop loading spinner to show modal
-          return;
-        }
-
-        this.loadingProgress = 0;
         this.loadingDetails = `Error: ${error.message}`;
-        
-        // Show error for a moment before closing
         setTimeout(() => {
           this.isLoading = false;
         }, 2000);
@@ -581,16 +572,16 @@ export default {
 
       // Hide modal
       this.showTokenModal = false;
+      this.tokenError = '';
       const modelToLoad = { ...this.modelToRetry };
 
-      // Clear retry state
-      this.hfToken = '';
+      // Clear retry state, but keep token in case it fails again
       this.modelToRetry = null;
 
       // Retry loading
-      if (modelToLoad) {
+      if (modelToLoad && modelToLoad.id) {
         if (modelToLoad.id === 'custom') {
-          await this.handleLoadModelUrl(modelToLoad.url);
+          await this.handleLoadModelUrl(modelToLoad.modelId);
         } else {
           await this.handleModelSelected(modelToLoad);
         }
@@ -697,50 +688,72 @@ export default {
         return
       }
 
-      // Trigger training in console component
-      if (this.$refs.trainConsole) {
-        this.$refs.trainConsole.startTraining()
-      }
+      // Consolidate all training info into a single config object
+      const fullTrainingConfig = {
+        modelSource: this.selectedModel.modelId,
+        dataset: this.corpusInfo,
+        trainingConfig: {
+          ...this.trainingConfig.config, // Base config from PlanModal
+          mode: this.selectedTrainingMode
+        },
+        hardwareInfo: this.hardwareInfo,
+      };
+
+      // Start training via the engine
+      trainingEngine.startTraining(fullTrainingConfig);
+    },
+
+    // Add missing handleTrainingStarted method
+    handleTrainingStarted(data) {
+      console.log('Training started:', data);
+      // Already handled by the trainingEngine events in setupTrainingEngineListeners
     },
 
     // Training Event Handlers
-    handleTrainingStarted() {
-      this.isTraining = true
-      this.trainingStatus.mode = this.selectedTrainingMode
-      this.trainingStatus.progress = 0
-      this.trainingStatus.throughput = 0
-      
-      // Start training simulation
-      this.startTrainingSimulation()
-    },
-
     handleTrainingPaused() {
-      // Training paused but still considered "in training"
-      this.pauseTrainingSimulation()
+      trainingEngine.pauseTraining();
     },
 
     handleTrainingResumed() {
-      // Training resumed
-      this.resumeTrainingSimulation()
+      trainingEngine.resumeTraining();
     },
 
     handleTrainingStopped() {
-      this.isTraining = false
-      this.adapterReady = true
-      this.stopTrainingSimulation()
+      trainingEngine.stopTraining();
     },
 
     handleTrainingAborted() {
-      this.isTraining = false
-      this.adapterReady = false
-      this.stopTrainingSimulation()
+      trainingEngine.stopTraining(); // Use stop for abort as well
     },
 
-    handleTrainingCompleted() {
-      this.isTraining = false
-      this.adapterReady = true
-      this.adapterLoaded = true
-      this.stopTrainingSimulation()
+    handleTrainingCompleted(data) {
+      this.adapterReady = true;
+      this.adapterLoaded = true;
+      console.log('Training completed in parent:', data);
+    },
+
+    resetTraining() {
+      this.trainingStatus = {
+        mode: null,
+        progress: 0,
+        eta: null,
+        throughput: 0,
+        tokensProcessed: 0,
+        totalTokens: this.corpusInfo?.tokenCount || 1000000,
+        currentStep: 0,
+        totalSteps: this.trainingConfig?.maxSteps || 1000,
+        currentLoss: 0,
+        memoryUsage: 2.3,
+        learningRate: this.trainingConfig?.learningRate || '3e-4',
+        batchSize: this.trainingConfig?.batchSize || 4,
+        loraRank: this.trainingConfig?.adapterConfig?.rank || 4,
+        lossHistory: [],
+        isTraining: false,
+        isPaused: false
+      };
+      this.trainingCompleted = false;
+      this.adapterReady = false;
+      this.adapterLoaded = false;
     },
 
     // Training Simulation
@@ -823,60 +836,67 @@ export default {
         timestamp: Date.now()
       })
 
-      // Start typing indicator
       this.isTyping = true
 
       try {
-        // Check if model is loaded
-        if (!this.selectedModel) {
-          throw new Error('No model loaded')
+        if (!this.selectedModel || !modelManager.isModelLoaded(this.selectedModel.modelId)) {
+          throw new Error('No model loaded. Please select a model first.');
         }
         
-        if (!this.modelSession) {
-          throw new Error('Model session not initialized')
-        }
-        if (!this.tokenizer) {
-          throw new Error('Tokenizer not initialized')
-        }
+        const assistantMessage = {
+          role: 'assistant',
+          content: '',
+          timestamp: Date.now(),
+          isLoading: true
+        };
+        this.chatHistory.push(assistantMessage);
 
-        // Tokenize the user message
-        const { input_ids } = this.tokenizer(message, {
-          return_tensor: false,
-          add_special_tokens: true,
-        });
-        
-        // Generate text from model outputs
-        const generatedText = await generateTextFromOutputs(
-          this.modelSession, 
-          this.tokenizer, 
-          input_ids
+        await modelManager.generate(
+          this.selectedModel.modelId,
+          message,
+          {
+            onToken: (token) => {
+              // In Vue 3, directly updating the property should trigger reactivity
+              assistantMessage.content += token;
+              // Force a state change for UI updates
+              this.chatHistory = [...this.chatHistory];
+            }
+          }
         );
         
-        // Add response to chat history
-        this.chatHistory.push({
-          role: 'assistant',
-          content: generatedText,
-          timestamp: Date.now()
-        })
+        assistantMessage.isLoading = false;
+
       } catch (error) {
-        console.error('Inference failed:', error)
-        
-        // Add error message to chat
-        this.chatHistory.push({
-          role: 'assistant',
-          content: `Error: ${error.message}. Please try again or load a different model.`,
-          timestamp: Date.now(),
-          isError: true
-        })
+        console.error('Inference failed:', error);
+        const loadingIndex = this.chatHistory.findIndex(msg => msg.isLoading);
+        if (loadingIndex !== -1) {
+          this.chatHistory[loadingIndex] = {
+            role: 'assistant',
+            content: `Error: ${error.message}`,
+            timestamp: Date.now(),
+            isError: true
+          };
+        }
       } finally {
-        // Stop typing indicator
-        this.isTyping = false
+        this.isTyping = false;
+      }
+    },
+
+    handleInterruptGeneration() {
+      if (this.selectedModel && this.selectedModel.modelId) {
+        modelManager.interrupt(this.selectedModel.modelId);
+        this.isTyping = false;
+        const loadingIndex = this.chatHistory.findIndex(msg => msg.isLoading);
+        if (loadingIndex !== -1) {
+          this.chatHistory[loadingIndex].content += ' [Interrupted]';
+          this.chatHistory[loadingIndex].isLoading = false;
+        }
       }
     },
 
     // Memory management - simulate memory usage during training
     updateMemoryUsage() {
-      if (this.isTraining) {
+      if (this.trainingStatus?.isTraining) {
         // Simulate increasing memory usage during training
         const baseUsage = 1.8
         const trainingOverhead = this.selectedTrainingMode === 'full' ? 2.5 : 1.2
@@ -1224,6 +1244,16 @@ export default {
   color: #ccc;
   line-height: 1.5;
   margin-bottom: 1.5rem;
+}
+
+.token-error-message {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid #ef4444;
+  color: #fca5a5;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
 }
 
 .hf-token-link {

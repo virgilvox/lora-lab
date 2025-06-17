@@ -3,7 +3,15 @@
  * Handles serialization and deserialization of LoRA adapters in safetensors format
  */
 
-import { safetensors } from 'safetensors';
+// The safetensors ES module build re-exports its WASM bindings under the default export.
+// Importing named helpers directly fails when Vite bundles for the browser because the
+// generated proxy module does not declare those named exports. Use a namespace import
+// instead and reference helpers via the namespace to maintain compatibility across
+// Node and browser builds.
+import * as safetensors from 'safetensors';
+
+// Convenience re-exports for existing code.
+const { serialize, deserialize } = safetensors;
 
 /**
  * Export LoRA adapter to safetensors format
@@ -56,7 +64,7 @@ export async function exportAdapter(adapterData, metadata = {}) {
     };
     
     // Serialize to safetensors format
-    const serialized = safetensors.serialize(tensors, adapterMetadata);
+    const serialized = serialize(tensors, adapterMetadata);
     
     console.log('Adapter exported successfully:', {
       tensorCount: Object.keys(tensors).length,
@@ -82,7 +90,7 @@ export async function importAdapter(data) {
     console.log('Importing LoRA adapter from safetensors format...');
     
     // Deserialize safetensors data
-    const { tensors, metadata } = safetensors.deserialize(data);
+    const { tensors, metadata } = deserialize(data);
     
     // Validate format
     if (!metadata || metadata.adapter_type !== 'lora') {
@@ -228,7 +236,7 @@ export async function validateAdapterFile(fileData) {
     }
     
     // Try to deserialize
-    const { tensors, metadata } = safetensors.deserialize(data);
+    const { tensors, metadata } = deserialize(data);
     
     // Validate metadata
     if (!metadata) {

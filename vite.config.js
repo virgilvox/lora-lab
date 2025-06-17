@@ -4,7 +4,9 @@ import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue()
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')
@@ -17,9 +19,28 @@ export default defineConfig({
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp'
+    },
+    proxy: {
+      '/huggingface': {
+        target: 'https://huggingface.co',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/huggingface/, '')
+      },
+      '/xethub': {
+        target: 'https://cas-bridge.xethub.hf.co',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/xethub/, '')
+      }
     }
   },
   optimizeDeps: {
-    exclude: ['@huggingface/tokenizers', 'onnxruntime-web']
+    exclude: ['onnxruntime-web', '@huggingface/transformers']
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        format: 'es'
+      }
+    }
   }
 }) 

@@ -3,14 +3,16 @@
  * Handles background training execution with real-time progress reporting
  */
 
-import { createTrainingSession, runInference, disposeSession } from '../trainers/onnxSession.js';
+import { createONNXSession, getSupportedProviders, runInference, disposeSession } from '../trainers/onnxSession.js';
 import { LoRARankScheduler, RANK_STRATEGIES } from '../trainers/rankScheduler.js';
 import { loadDataset, createTrainingSequences } from '../data/datasetLoader.js';
+import * as ort from 'onnxruntime-web';
 
 // Worker state
-let trainingSession = null;
+let session = null;
 let rankScheduler = null;
 let isTraining = false;
+let isPaused = false;
 let trainingConfig = null;
 let trainingData = null;
 let currentStep = 0;
@@ -127,11 +129,8 @@ self.onmessage = async function(event) {
 
   try {
     switch (type) {
-      case 'INITIALIZE':
-        await handleInitialize(data);
-        break;
-      case 'START_TRAINING':
-        await handleStartTraining(data);
+      case 'INITIALIZE_AND_START':
+        await handleInitializeAndStart(data);
         break;
       case 'PAUSE_TRAINING':
         handlePauseTraining();
@@ -157,88 +156,52 @@ self.onmessage = async function(event) {
 };
 
 /**
- * Initialize training worker
+ * Initialize training worker and start training
  */
-async function handleInitialize(data) {
-  const { hardwareInfo, modelOptions } = data;
+async function handleInitializeAndStart(data) {
+  const { modelSource, dataset, trainingConfig } = data;
 
   try {
-    // Initialize WebGPU
-    const webgpuReady = await initializeWebGPU();
-    if (webgpuReady) {
-      await createComputePipelines();
-    }
+    // Configure ONNX Runtime environment for training
+    ort.env.wasm.simd = true;
+    ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4;
 
-    self.postMessage({
-      type: 'INITIALIZED',
-      data: {
-        webgpuSupported: webgpuReady,
-        hardwareInfo,
-        ready: true
-      }
+    // TODO: This would ideally be a training session.
+    // The 'onnxruntime-web' package is primarily for inference.
+    // A full training implementation might require a custom build or a different library.
+    // For this refactor, we will simulate the training loop but correctly load the model for inference.
+    session = await ort.InferenceSession.create(modelSource, {
+        executionProviders: ['webgpu', 'wasm'],
+        graphOptimizationLevel: 'all'
     });
-  } catch (error) {
-    console.error('Worker initialization failed:', error);
-    self.postMessage({
-      type: 'ERROR',
-      data: { message: 'Worker initialization failed', error: error.message }
-    });
-  }
-}
 
-/**
- * Start training process
- */
-async function handleStartTraining(data) {
-  const {
-    modelUrl,
-    trainingMode,
-    corpusText,
-    config
-  } = data;
-
-  try {
     isTraining = true;
+    isPaused = false;
     startTime = Date.now();
     currentStep = 0;
     lossHistory = [];
     throughputHistory = [];
-
+    
     // Store training configuration
-    trainingConfig = {
-      mode: trainingMode,
-      learningRate: config.learningRate || 1e-4,
-      batchSize: config.batchSize || 1,
-      sequenceLength: config.sequenceLength || 512,
-      maxSteps: config.maxSteps || 1000,
-      adapterConfig: config.adapterConfig || { rank: 4, alpha: 8 },
-      ...config
-    };
+    trainingConfig = config;
 
     // Process training data
-    const dataset = await loadDataset(corpusText, {
+    const tokenizedDataset = await loadDataset(dataset.text, {
       sequenceLength: trainingConfig.sequenceLength,
       maxTokens: 100000 // Limit for demo
     });
 
     trainingData = createTrainingSequences(
-      dataset.tokens,
+      tokenizedDataset.tokens,
       trainingConfig.sequenceLength,
       trainingConfig.sequenceLength // No overlap for simplicity
     );
 
     totalSteps = Math.min(trainingConfig.maxSteps, trainingData.length);
 
-    // Create ONNX training session
-    trainingSession = await createTrainingSession(modelUrl, trainingConfig);
-
-    // Initialize rank scheduler
     rankScheduler = new LoRARankScheduler({
-      strategy: RANK_STRATEGIES.HARDWARE_AWARE,
+      strategy: trainingConfig.rankStrategy || RANK_STRATEGIES.HARDWARE_AWARE,
       initialRank: trainingConfig.adapterConfig.rank,
-      minRank: 2,
-      maxRank: 16,
-      targetMemoryUsageGB: 4.0
     });
 
     self.postMessage({
@@ -250,15 +213,13 @@ async function handleStartTraining(data) {
       }
     });
 
-    // Start training loop
     await runTrainingLoop();
 
   } catch (error) {
-    console.error('Training start failed:', error);
-    isTraining = false;
+    console.error('Worker initialization or training start failed:', error);
     self.postMessage({
       type: 'ERROR',
-      data: { message: 'Training failed to start', error: error.message }
+      data: { message: 'Worker initialization failed', error: error.message }
     });
   }
 }
@@ -272,6 +233,12 @@ async function runTrainingLoop() {
   let stepStartTime = Date.now();
 
   while (isTraining && currentStep < totalSteps) {
+    if (isPaused) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      stepStartTime = Date.now(); // Reset start time after pause
+      continue;
+    }
+    
     try {
       // Get training batch
       const batch = getTrainingBatch(currentStep, batchSize);
@@ -342,6 +309,7 @@ async function runTrainingLoop() {
         type: 'ERROR',
         data: { message: 'Training step failed', error: error.message, step: currentStep }
       });
+      isTraining = false; // Stop training on error
       break;
     }
   }
@@ -376,17 +344,13 @@ async function performTrainingStep(batch) {
     let totalGradientNorm = 0;
 
     for (const sequence of batch) {
-      // Run forward pass through ONNX model
-      const inputs = {
-        input_ids: sequence.input,
-        attention_mask: new Array(sequence.input.length).fill(1)
-      };
-
-      const outputs = await runInference(trainingSession.baseSession, inputs);
+      // This is a simplified placeholder. A real implementation would:
+      // 1. Prepare input tensors (input_ids, attention_mask, labels)
+      // 2. Run the forward pass to get logits and loss
+      // 3. Run the backward pass to get gradients
+      // 4. Update weights using an optimizer
       
-      // Simulate loss calculation (in real implementation, this would be computed properly)
-      const targetTokens = sequence.labels;
-      const loss = simulateLossCalculation(outputs, targetTokens);
+      const loss = simulateLossCalculation(null, null);
       const gradientNorm = simulateGradientNorm(loss);
       
       totalLoss += loss;
@@ -394,7 +358,7 @@ async function performTrainingStep(batch) {
 
       // Simulate LoRA adapter forward pass using WebGPU if available
       if (device && computePipelines.loraForward) {
-        await performLoRAForwardPass(outputs, trainingConfig.adapterConfig);
+        await performLoRAForwardPass(null, trainingConfig.adapterConfig);
       }
     }
 
@@ -544,6 +508,7 @@ async function handleTrainingCompletion() {
  */
 function handlePauseTraining() {
   isTraining = false;
+  isPaused = true;
   
   self.postMessage({
     type: 'TRAINING_PAUSED',
@@ -555,8 +520,9 @@ function handlePauseTraining() {
  * Resume training
  */
 function handleResumeTraining() {
-  if (trainingSession && currentStep < totalSteps) {
+  if (session && currentStep < totalSteps) {
     isTraining = true;
+    isPaused = false;
     runTrainingLoop();
     
     self.postMessage({
@@ -571,11 +537,12 @@ function handleResumeTraining() {
  */
 function handleStopTraining() {
   isTraining = false;
+  isPaused = false;
   
   // Cleanup resources
-  if (trainingSession) {
-    disposeSession(trainingSession);
-    trainingSession = null;
+  if (session) {
+    disposeSession(session);
+    session = null;
   }
   
   if (rankScheduler) {
@@ -595,6 +562,7 @@ function handleStopTraining() {
 function handleGetStatus() {
   const status = {
     isTraining,
+    isPaused,
     currentStep,
     totalSteps,
     progress: totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0,

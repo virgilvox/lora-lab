@@ -14,21 +14,21 @@
         <div class="metric-card">
           <div class="metric-label">Tokens Processed</div>
           <div class="metric-value">
-            {{ formatNumber(tokensProcessed) }}
-            <span class="metric-total">/ {{ formatNumber(totalTokens) }}</span>
+            {{ formatNumber(trainingStatus.tokensProcessed) }}
+            <span class="metric-total">/ {{ formatNumber(trainingStatus.totalTokens) }}</span>
           </div>
           <div class="metric-percentage">{{ progressPercentage }}%</div>
         </div>
 
         <div class="metric-card">
           <div class="metric-label">Throughput</div>
-          <div class="metric-value">{{ formatNumber(throughput) }}</div>
+          <div class="metric-value">{{ formatNumber(trainingStatus.throughput) }}</div>
           <div class="metric-unit">tokens/sec</div>
         </div>
 
         <div class="metric-card">
           <div class="metric-label">Current Loss</div>
-          <div class="metric-value">{{ currentLoss.toFixed(4) }}</div>
+          <div class="metric-value">{{ trainingStatus.currentLoss.toFixed(4) }}</div>
           <div class="metric-trend" :class="lossTrend">
             {{ lossTrend === 'decreasing' ? '↓' : lossTrend === 'increasing' ? '↑' : '→' }}
           </div>
@@ -36,7 +36,7 @@
 
         <div class="metric-card">
           <div class="metric-label">ETA</div>
-          <div class="metric-value">{{ formatTime(estimatedTimeRemaining) }}</div>
+          <div class="metric-value">{{ formatTime(trainingStatus.estimatedTimeRemaining) }}</div>
           <div class="metric-unit">{{ etaAccuracy }}</div>
         </div>
       </div>
@@ -51,7 +51,7 @@
           ></div>
         </div>
         <div class="progress-labels">
-          <span>{{ formatNumber(tokensProcessed) }} tokens</span>
+          <span>{{ formatNumber(trainingStatus.tokensProcessed) }} tokens</span>
           <span>{{ progressPercentage }}%</span>
         </div>
       </div>
@@ -112,27 +112,27 @@
       <div class="config-grid">
         <div class="config-item">
           <span class="config-label">Mode:</span>
-          <span class="config-value">{{ trainingMode }}</span>
+          <span class="config-value">{{ trainingStatus.mode }}</span>
         </div>
         <div class="config-item">
           <span class="config-label">Learning Rate:</span>
-          <span class="config-value">{{ learningRate }}</span>
+          <span class="config-value">{{ trainingStatus.learningRate }}</span>
         </div>
         <div class="config-item">
           <span class="config-label">Batch Size:</span>
-          <span class="config-value">{{ batchSize }}</span>
+          <span class="config-value">{{ trainingStatus.batchSize }}</span>
         </div>
         <div class="config-item">
           <span class="config-label">Rank:</span>
-          <span class="config-value">{{ loraRank }}</span>
+          <span class="config-value">{{ trainingStatus.loraRank }}</span>
         </div>
         <div class="config-item">
           <span class="config-label">Steps:</span>
-          <span class="config-value">{{ currentStep }} / {{ totalSteps }}</span>
+          <span class="config-value">{{ trainingStatus.currentStep }} / {{ trainingStatus.totalSteps }}</span>
         </div>
         <div class="config-item">
           <span class="config-label">GPU Memory:</span>
-          <span class="config-value">{{ memoryUsage.toFixed(1) }} GB</span>
+          <span class="config-value">{{ trainingStatus.memoryUsage.toFixed(1) }} GB</span>
         </div>
       </div>
     </div>
@@ -245,49 +245,50 @@ export default {
     hardwareInfo: {
       type: Object,
       default: () => ({})
+    },
+    isTraining: {
+      type: Boolean,
+      default: false
+    },
+    isPaused: {
+      type: Boolean,
+      default: false
+    },
+    trainingCompleted: {
+      type: Boolean,
+      default: false
+    },
+    trainingStatus: {
+      type: Object,
+      default: () => ({
+        tokensProcessed: 0,
+        totalTokens: 1000000,
+        currentStep: 0,
+        totalSteps: 1000,
+        currentLoss: 3.2451,
+        throughput: 0,
+        estimatedTimeRemaining: 0,
+        memoryUsage: 2.3,
+        mode: 'Adapter (LoRA)',
+        learningRate: '3e-4',
+        batchSize: 4,
+        loraRank: 4,
+        lossHistory: []
+      })
+    },
+    canStartTraining: {
+      type: Boolean,
+      default: true
     }
   },
-  emits: ['training-started', 'training-paused', 'training-resumed', 'training-stopped', 'training-aborted', 'training-completed'],
+  emits: ['start-training', 'pause-training', 'resume-training', 'stop-training', 'abort-training', 'reset-training'],
   data() {
     return {
-      // Training State
-      isTraining: false,
-      isPaused: false,
-      trainingCompleted: false,
-      canStartTraining: true,
-
-      // Progress Metrics
-      tokensProcessed: 0,
-      totalTokens: 1000000, // 1M tokens default
-      currentStep: 0,
-      totalSteps: 1000,
-      currentLoss: 3.2451,
-      initialLoss: 3.2451,
-      bestLoss: 3.2451,
-      throughput: 0,
-      estimatedTimeRemaining: 0,
-      memoryUsage: 2.3,
-
-      // Training Configuration
-      trainingMode: 'Adapter (LoRA)',
-      learningRate: '3e-4',
-      batchSize: 4,
-      loraRank: 4,
-
-      // Loss Tracking
-      lossHistory: [],
       showMovingAverage: true,
       chartTimeWindow: 'all',
-
-      // Training Log
       trainingLog: [],
       showLog: false,
       autoScrollLog: true,
-
-      // Internal timers
-      trainingTimer: null,
-      startTime: null,
-      pausedTime: 0
     }
   },
   computed: {
@@ -299,13 +300,13 @@ export default {
     },
 
     progressPercentage() {
-      if (this.totalTokens === 0) return 0
-      return Math.min(100, Math.round((this.tokensProcessed / this.totalTokens) * 100))
+      if (this.trainingStatus.totalTokens === 0) return 0
+      return Math.min(100, Math.round((this.trainingStatus.tokensProcessed / this.trainingStatus.totalTokens) * 100))
     },
 
     lossTrend() {
-      if (this.lossHistory.length < 2) return 'stable'
-      const recent = this.lossHistory.slice(-5)
+      if (this.trainingStatus.lossHistory.length < 2) return 'stable'
+      const recent = this.trainingStatus.lossHistory.slice(-5)
       const current = recent[recent.length - 1]
       const previous = recent[0]
       
@@ -314,163 +315,63 @@ export default {
       return 'stable'
     },
 
+    initialLoss() {
+      return this.trainingStatus.lossHistory.length > 0 ? this.trainingStatus.lossHistory[0] : 0;
+    },
+    bestLoss() {
+      return this.trainingStatus.lossHistory.length > 0 ? Math.min(...this.trainingStatus.lossHistory) : 0;
+    },
     lossImprovement() {
-      return this.initialLoss - this.currentLoss
+      if (this.initialLoss === 0) return 0;
+      return this.initialLoss - this.trainingStatus.currentLoss
     },
 
     displayedLossHistory() {
       if (this.chartTimeWindow === 'all') {
-        return this.lossHistory
+        return this.trainingStatus.lossHistory;
       }
       const windowSize = parseInt(this.chartTimeWindow)
-      return this.lossHistory.slice(-windowSize)
+      return this.trainingStatus.lossHistory.slice(-windowSize)
     },
 
     etaAccuracy() {
-      if (this.tokensProcessed < 1000) return 'estimating...'
-      if (this.tokensProcessed < 10000) return '± 50%'
-      if (this.tokensProcessed < 50000) return '± 20%'
+      if (this.trainingStatus.tokensProcessed < 1000) return 'estimating...'
+      if (this.trainingStatus.tokensProcessed < 10000) return '± 50%'
+      if (this.trainingStatus.tokensProcessed < 50000) return '± 20%'
       return '± 5%'
     }
   },
   mounted() {
-    // Initialize with config if provided
-    if (this.trainingConfig.totalTokens) {
-      this.totalTokens = this.trainingConfig.totalTokens
-    }
-    if (this.trainingConfig.mode) {
-      this.trainingMode = this.trainingConfig.mode === 'adapter' ? 'Adapter (LoRA)' : 'Full-Tune'
-    }
-    
     this.addLogEntry('info', 'Training console initialized')
   },
   beforeUnmount() {
-    if (this.trainingTimer) {
-      clearInterval(this.trainingTimer)
-    }
+    // No timer to clear anymore
   },
   methods: {
     startTraining() {
-      this.isTraining = true
-      this.isPaused = false
-      this.trainingCompleted = false
-      this.startTime = Date.now()
-      this.pausedTime = 0
-      
-      this.addLogEntry('info', 'Training started')
-      this.startTrainingLoop()
-      this.$emit('training-started')
+      this.$emit('start-training');
     },
 
     pauseTraining() {
-      this.isTraining = false
-      this.isPaused = true
-      
-      if (this.trainingTimer) {
-        clearInterval(this.trainingTimer)
-      }
-      
-      this.addLogEntry('info', 'Training paused')
-      this.$emit('training-paused')
+      this.$emit('pause-training');
     },
 
     resumeTraining() {
-      this.isTraining = true
-      this.isPaused = false
-      this.pausedTime += Date.now() - this.startTime
-      
-      this.addLogEntry('info', 'Training resumed')
-      this.startTrainingLoop()
-      this.$emit('training-resumed')
+      this.$emit('resume-training');
     },
 
     stopTraining() {
-      this.isTraining = false
-      this.isPaused = false
-      this.trainingCompleted = true
-      
-      if (this.trainingTimer) {
-        clearInterval(this.trainingTimer)
-      }
-      
-      this.addLogEntry('success', 'Training completed successfully')
-      this.$emit('training-stopped')
+      this.$emit('stop-training');
     },
 
     abortTraining() {
-      this.isTraining = false
-      this.isPaused = false
-      this.trainingCompleted = false
-      
-      if (this.trainingTimer) {
-        clearInterval(this.trainingTimer)
-      }
-      
-      this.addLogEntry('error', 'Training aborted by user')
-      this.$emit('training-aborted')
+      this.$emit('abort-training');
     },
 
     resetTraining() {
-      // Reset all metrics
-      this.tokensProcessed = 0
-      this.currentStep = 0
-      this.currentLoss = this.initialLoss
-      this.bestLoss = this.initialLoss
-      this.throughput = 0
-      this.estimatedTimeRemaining = 0
-      this.lossHistory = []
-      this.trainingCompleted = false
-      this.startTime = null
-      this.pausedTime = 0
-      
-      this.addLogEntry('info', 'Training reset')
+      this.$emit('reset-training');
     },
-
-    startTrainingLoop() {
-      // Simulate training progress
-      this.trainingTimer = setInterval(() => {
-        if (!this.isTraining) return
-
-        // Simulate token processing
-        const tokensPerStep = Math.floor(Math.random() * 20) + 50 // 50-70 tokens per step
-        this.tokensProcessed = Math.min(this.totalTokens, this.tokensProcessed + tokensPerStep)
-        this.currentStep++
-
-        // Simulate loss decrease with some noise
-        const lossDecrease = 0.001 + Math.random() * 0.002
-        const noise = (Math.random() - 0.5) * 0.0005
-        this.currentLoss = Math.max(0.1, this.currentLoss - lossDecrease + noise)
-        
-        if (this.currentLoss < this.bestLoss) {
-          this.bestLoss = this.currentLoss
-        }
-
-        // Add to loss history
-        this.lossHistory.push(this.currentLoss)
-        if (this.lossHistory.length > 10000) {
-          this.lossHistory = this.lossHistory.slice(-5000) // Keep last 5000 points
-        }
-
-        // Calculate throughput
-        const elapsedSeconds = (Date.now() - this.startTime - this.pausedTime) / 1000
-        this.throughput = elapsedSeconds > 0 ? Math.round(this.tokensProcessed / elapsedSeconds) : 0
-
-        // Calculate ETA
-        const remainingTokens = this.totalTokens - this.tokensProcessed
-        this.estimatedTimeRemaining = this.throughput > 0 ? Math.round(remainingTokens / this.throughput) : 0
-
-        // Log progress periodically
-        if (this.currentStep % 100 === 0) {
-          this.addLogEntry('info', `Step ${this.currentStep}: Loss ${this.currentLoss.toFixed(4)}, Throughput ${this.throughput} t/s`)
-        }
-
-        // Check if training is complete
-        if (this.tokensProcessed >= this.totalTokens || this.currentStep >= this.totalSteps) {
-          this.stopTraining()
-        }
-      }, 100) // Update every 100ms for smooth animation
-    },
-
+    
     addLogEntry(level, message) {
       const entry = {
         timestamp: Date.now(),
@@ -501,7 +402,7 @@ export default {
       this.addLogEntry('info', 'Log cleared')
     },
 
-    formatNumber(num) {
+    formatNumber(num = 0) {
       if (num >= 1000000) {
         return (num / 1000000).toFixed(1) + 'M'
       }
@@ -511,10 +412,10 @@ export default {
       return num.toString()
     },
 
-    formatTime(seconds) {
-      if (seconds === 0) return '--'
-      if (seconds < 60) return `${seconds}s`
-      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`
+    formatTime(seconds = 0) {
+      if (seconds === 0 || !seconds) return '--'
+      if (seconds < 60) return `${Math.round(seconds)}s`
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`
       const hours = Math.floor(seconds / 3600)
       const minutes = Math.floor((seconds % 3600) / 60)
       return `${hours}h ${minutes}m`
