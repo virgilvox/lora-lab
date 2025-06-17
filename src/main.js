@@ -4,6 +4,7 @@ import './style.css'
 import testUtils, { add, PI } from './utils/testModule.js'
 // Test Vue SFC import
 import TestComponent from './ui/TestComponent.vue'
+import LoRALabApp from './ui/LoRALabApp.vue'
 
 // Test plain JS module functionality
 console.log('Plain JS module test:', {
@@ -13,18 +14,5 @@ console.log('Plain JS module test:', {
 })
 
 // Create Vue app with test component
-const app = createApp({
-  components: {
-    TestComponent
-  },
-  template: `
-    <div id="app">
-      <h1>LoRA Lab - Setup Verification</h1>
-      <TestComponent />
-      <p>Plain JS modules: ✅ Working</p>
-      <p>Vue SFCs: ✅ Working</p>
-    </div>
-  `
-})
-
+const app = createApp(LoRALabApp)
 app.mount('#app')
