@@ -1,0 +1,37 @@
+# Task ID: 1
+# Title: Setup Project Repository
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Initialize the project repository with required file structure and basic configuration.
+# Details:
+Create the directory structure as specified in the PRD. Initialize a Vite project with vanilla JS modules. Set up `vite.config.js` and `README.md`. Ensure all folders (`src/ui`, `src/trainers`, `src/workers`, `src/data`, `src/utils`) are present. Use only plain JS and Vue SFCs with `<script>` tags.
+
+# Test Strategy:
+Verify repository structure matches PRD. Confirm Vite project starts and serves basic HTML.
+
+# Subtasks:
+## 1. Create Project Directory and Initialize Vite [pending]
+### Dependencies: None
+### Description: Set up the root project directory and initialize a new Vite project using vanilla JavaScript modules.
+### Details:
+Create the main project folder as specified in the PRD. Open a terminal in this directory and run `npm create vite@latest`. When prompted, select 'Vanilla' for the framework and 'JavaScript' for the variant. Complete the Vite setup and install dependencies with `npm install`.[5][2]
+
+## 2. Establish Required Directory Structure [pending]
+### Dependencies: 1.1
+### Description: Create all necessary subdirectories within the project as specified in the PRD.
+### Details:
+Within the project root, create the following folders: `src/ui`, `src/trainers`, `src/workers`, `src/data`, and `src/utils`. Ensure each directory exists and is correctly nested under `src`.
+
+## 3. Configure Vite and Add Project Documentation [pending]
+### Dependencies: 1.2
+### Description: Set up the Vite configuration file and create a basic README.md for the project.
+### Details:
+Edit or create `vite.config.js` in the project root to ensure compatibility with plain JS and Vue SFCs using `<script>` tags. Add a `README.md` file with project overview, setup instructions, and directory structure explanation.
+
+## 4. Verify Plain JS and Vue SFC Compatibility [pending]
+### Dependencies: 1.3
+### Description: Ensure the project supports both plain JavaScript modules and Vue Single File Components with `<script>` tags.
+### Details:
+Test importing and using a plain JS module and a Vue SFC (with only `<script>` tags) in the `src/ui` directory. Adjust Vite configuration if necessary to support both file types.
+

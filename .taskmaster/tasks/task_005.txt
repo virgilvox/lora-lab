@@ -1,0 +1,37 @@
+# Task ID: 5
+# Title: Implement Training Dashboard
+# Status: pending
+# Dependencies: 1
+# Priority: medium
+# Description: Build the training console for monitoring progress.
+# Details:
+Develop `TrainConsole.vue` with token counter, loss chart, throughput, ETA, and abort button. Use vanilla JS for charting. Connect to training worker for real-time updates.
+
+# Test Strategy:
+Test real-time updates of token count, loss, throughput, and ETA. Verify abort functionality.
+
+# Subtasks:
+## 1. Create TrainConsole.vue Component Structure [pending]
+### Dependencies: None
+### Description: Set up the basic Vue component structure for TrainConsole.vue, including layout and placeholders for all required dashboard elements.
+### Details:
+Define the Vue single-file component with template, script, and style sections. Add placeholders for the token counter, loss chart, throughput display, ETA, and abort button. Use semantic HTML and scoped CSS for layout. Ensure the component is ready to receive real-time data updates.
+
+## 2. Implement Real-Time Data Connection [pending]
+### Dependencies: None
+### Description: Connect TrainConsole.vue to the training worker to receive real-time updates for tokens, loss, throughput, and ETA.
+### Details:
+Establish a communication channel (e.g., WebSocket, event bus, or worker messaging) between the component and the training worker. Set up reactive data properties in Vue to store incoming values. Update the UI placeholders to display live data as it arrives.
+
+## 3. Build Loss Chart with Vanilla JS [pending]
+### Dependencies: None
+### Description: Implement a dynamic loss chart using vanilla JavaScript within the Vue component.
+### Details:
+Add a canvas or SVG element for the chart. Use vanilla JS to draw and update the loss chart as new data arrives. Ensure the chart is responsive and efficiently updates with each new data point.
+
+## 4. Implement Abort Button Functionality [pending]
+### Dependencies: None
+### Description: Add an abort button to the dashboard that allows users to stop the training process.
+### Details:
+Create a button in the component and wire it to send an abort signal to the training worker. Handle UI state changes (e.g., disabling the button after abort, showing confirmation). Ensure the component responds appropriately to the abort event.
+

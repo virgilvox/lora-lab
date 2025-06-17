@@ -1,0 +1,37 @@
+# Task ID: 9
+# Title: Implement Adapter Export and Import
+# Status: pending
+# Dependencies: 6, 7
+# Priority: medium
+# Description: Enable download and drag-back-in of trained adapters.
+# Details:
+Implement `safetensorExport.js` in `src/utils/` for exporting adapters as `.safetensors`. Support drag-and-drop import of adapters. Validate file format and compatibility.
+
+# Test Strategy:
+Test adapter export and import. Verify file integrity and model compatibility.
+
+# Subtasks:
+## 1. Implement Adapter Export Functionality [pending]
+### Dependencies: None
+### Description: Develop the logic to export trained adapters as .safetensors files, enabling users to download them from the application.
+### Details:
+Create `safetensorExport.js` in `src/utils/`. Implement functions to serialize adapter data and trigger a file download in the .safetensors format. Ensure the export process preserves all necessary adapter metadata and structure.
+
+## 2. Implement Drag-and-Drop Import UI [pending]
+### Dependencies: 9.1
+### Description: Add a user interface component that allows users to drag and drop .safetensors files into the application for importing adapters.
+### Details:
+Design and implement a drag-and-drop area in the relevant UI. Integrate event handlers to capture dropped files and pass them to the import logic. Provide user feedback for successful and failed drops.
+
+## 3. Validate Imported Adapter Files [pending]
+### Dependencies: 9.2
+### Description: Implement validation logic to ensure imported files are in the correct .safetensors format and compatible with the application.
+### Details:
+Parse the dropped file, check for .safetensors format, and verify required adapter metadata and structure. Display clear error messages for invalid or incompatible files.
+
+## 4. Integrate Import Logic and Adapter Loading [pending]
+### Dependencies: 9.3
+### Description: Connect the validated import process to the application's adapter loading mechanism, ensuring imported adapters are available for use.
+### Details:
+On successful validation, deserialize the adapter data and register it within the application's adapter management system. Update UI and internal state to reflect the newly imported adapter.
+

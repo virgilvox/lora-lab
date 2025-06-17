@@ -1,0 +1,37 @@
+# Task ID: 2
+# Title: Implement Hardware Detection
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Detect and estimate local GPU/CPU capabilities for hardware-aware guidance.
+# Details:
+Implement `hwDetect.js` in `src/utils/`. Use `navigator.gpu.requestAdapter()` to detect WebGPU, estimate TFLOPs, and check device memory. Expose functions to get GPU info, TFLOPs, and memory. Use `navigator.deviceMemory` as fallback.
+
+# Test Strategy:
+Test on multiple devices/browsers. Verify correct detection of WebGPU, TFLOPs estimation, and memory reporting.
+
+# Subtasks:
+## 1. Detect WebGPU Support and Request Adapter [pending]
+### Dependencies: None
+### Description: Implement logic to check for WebGPU support and request a GPU adapter using navigator.gpu.requestAdapter().
+### Details:
+In hwDetect.js, check if navigator.gpu exists to determine WebGPU support. If supported, use navigator.gpu.requestAdapter() to obtain a GPUAdapter instance. Handle cases where WebGPU is not available by preparing to use fallback detection methods.
+
+## 2. Extract GPU Information and Estimate TFLOPs [pending]
+### Dependencies: None
+### Description: Retrieve GPU details from the adapter and estimate theoretical TFLOPs if possible.
+### Details:
+From the GPUAdapter, extract available properties such as name, features, and limits. If possible, use these details to estimate the GPU's theoretical TFLOPs. If direct TFLOPs estimation is not feasible, document the limitation and provide the most relevant available metrics.
+
+## 3. Detect CPU and Device Memory Capabilities [pending]
+### Dependencies: None
+### Description: Implement fallback detection for CPU and device memory using navigator.deviceMemory and other available APIs.
+### Details:
+If WebGPU is unavailable or insufficient, use navigator.deviceMemory to estimate available RAM. Optionally, use other browser APIs to infer CPU capabilities (such as navigator.hardwareConcurrency for logical cores). Ensure fallback logic is robust and provides meaningful estimates.
+
+## 4. Expose Hardware Info Retrieval Functions [pending]
+### Dependencies: None
+### Description: Design and implement functions in hwDetect.js to expose GPU info, TFLOPs, and memory estimates for use elsewhere in the application.
+### Details:
+Create and export functions such as getGPUInfo(), getTFLOPsEstimate(), and getDeviceMemory(). Ensure these functions return consistent, structured data regardless of detection path (WebGPU or fallback). Document the API for consumers.
+

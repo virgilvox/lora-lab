@@ -1,0 +1,37 @@
+# Task ID: 7
+# Title: Implement Training Worker and Data Loader
+# Status: pending
+# Dependencies: 1, 6
+# Priority: medium
+# Description: Create background worker for training and data loading.
+# Details:
+Develop `training.worker.js` in `src/workers/` for off-main-thread training. Implement `datasetLoader.js` in `src/data/` for corpus loading and tokenization. Use dual-sequence packing and TF-IDF curriculum.
+
+# Test Strategy:
+Test worker starts and processes data. Verify dual-sequence packing and curriculum logic.
+
+# Subtasks:
+## 1. Design and Implement Data Loader Module [pending]
+### Dependencies: None
+### Description: Develop the `datasetLoader.js` module in `src/data/` to handle corpus loading, preprocessing, and tokenization.
+### Details:
+Create functions to load datasets from disk or remote sources, preprocess raw text, and tokenize input using the project's tokenizer. Integrate dual-sequence packing logic and prepare data batches suitable for training. Ensure the loader can handle large datasets efficiently.
+
+## 2. Implement TF-IDF Curriculum Sampling [pending]
+### Dependencies: 7.1
+### Description: Integrate TF-IDF-based curriculum learning into the data loader to prioritize training samples.
+### Details:
+Calculate TF-IDF scores for dataset samples and implement a sampling strategy that selects or weights samples based on their TF-IDF scores. Expose configuration options for curriculum parameters.
+
+## 3. Develop Training Worker Script [pending]
+### Dependencies: 7.2
+### Description: Create `training.worker.js` in `src/workers/` to run model training off the main thread.
+### Details:
+Set up a web worker or Node.js worker thread that receives training configuration and data batches from the main process. Implement message passing for status updates, progress, and results. Ensure the worker can invoke the model training loop using data from the loader.
+
+## 4. Integrate Data Loader with Training Worker [pending]
+### Dependencies: 7.3
+### Description: Connect the data loader and curriculum logic to the training worker for seamless data flow during training.
+### Details:
+Ensure the training worker requests and receives data batches from the loader as needed. Handle synchronization, error reporting, and resource cleanup. Validate that the training loop uses the correct data and curriculum sampling.
+

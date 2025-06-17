@@ -1,0 +1,37 @@
+# Task ID: 8
+# Title: Build Chat Panel and Adapter Toggle
+# Status: pending
+# Dependencies: 1, 6
+# Priority: medium
+# Description: Develop chat interface with LoRA adapter toggle.
+# Details:
+Implement `ChatPanel.vue` with conversation display, prompt input, and toggle for using LoRA. Ensure seamless switching between base and LoRA modes.
+
+# Test Strategy:
+Test chat functionality, prompt submission, and LoRA toggle. Verify correct model response.
+
+# Subtasks:
+## 1. Design ChatPanel.vue Layout and Structure [pending]
+### Dependencies: None
+### Description: Create the foundational layout for ChatPanel.vue, including sections for conversation display, prompt input, and the LoRA adapter toggle.
+### Details:
+Set up the Vue component structure with a main container. Add placeholders for the chat message list, input area, and a toggle switch for the LoRA adapter. Use Vue's template syntax to organize these sections clearly, ensuring the layout is responsive and accessible.
+
+## 2. Implement Conversation Display and Message Handling [pending]
+### Dependencies: 8.1
+### Description: Develop the logic and UI for displaying chat messages and handling new message input within ChatPanel.vue.
+### Details:
+Bind a reactive array to store chat messages. Render messages in the conversation area using v-for. Implement a method to handle sending new messages from the input field, updating the message array and clearing the input. Optionally, add basic styling for message bubbles and timestamps.
+
+## 3. Add LoRA Adapter Toggle Functionality [pending]
+### Dependencies: 8.2
+### Description: Integrate a toggle switch in ChatPanel.vue to enable or disable the LoRA adapter, updating the chat mode accordingly.
+### Details:
+Implement a toggle UI element (e.g., switch or checkbox) bound to a reactive property (e.g., isLoRAEnabled). Ensure that toggling updates the chat mode state. Display the current mode (Base or LoRA) in the UI for user clarity.
+
+## 4. Integrate Mode Switching Logic for Message Sending [pending]
+### Dependencies: 8.3
+### Description: Ensure that message sending logic respects the current adapter mode (Base or LoRA) and routes messages accordingly.
+### Details:
+Update the message sending method to check the isLoRAEnabled state. Route messages through the appropriate handler or API endpoint based on the selected mode. Ensure seamless switching between modes without losing conversation context.
+

@@ -1,0 +1,562 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Setup Project Repository",
+        "description": "Initialize the project repository with required file structure and basic configuration.",
+        "details": "Create the directory structure as specified in the PRD. Initialize a Vite project with vanilla JS modules. Set up `vite.config.js` and `README.md`. Ensure all folders (`src/ui`, `src/trainers`, `src/workers`, `src/data`, `src/utils`) are present. Use only plain JS and Vue SFCs with `<script>` tags.",
+        "testStrategy": "Verify repository structure matches PRD. Confirm Vite project starts and serves basic HTML.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Project Directory and Initialize Vite",
+            "description": "Set up the root project directory and initialize a new Vite project using vanilla JavaScript modules.",
+            "dependencies": [],
+            "details": "Create the main project folder as specified in the PRD. Open a terminal in this directory and run `npm create vite@latest`. When prompted, select 'Vanilla' for the framework and 'JavaScript' for the variant. Complete the Vite setup and install dependencies with `npm install`.[5][2]",
+            "status": "done",
+            "testStrategy": "Verify that the Vite project initializes successfully and that running `npm run dev` starts the development server without errors."
+          },
+          {
+            "id": 2,
+            "title": "Establish Required Directory Structure",
+            "description": "Create all necessary subdirectories within the project as specified in the PRD.",
+            "dependencies": [
+              1
+            ],
+            "details": "Within the project root, create the following folders: `src/ui`, `src/trainers`, `src/workers`, `src/data`, and `src/utils`. Ensure each directory exists and is correctly nested under `src`.",
+            "status": "done",
+            "testStrategy": "Check that all specified directories are present and correctly structured within the project."
+          },
+          {
+            "id": 3,
+            "title": "Configure Vite and Add Project Documentation",
+            "description": "Set up the Vite configuration file and create a basic README.md for the project.",
+            "dependencies": [
+              2
+            ],
+            "details": "Edit or create `vite.config.js` in the project root to ensure compatibility with plain JS and Vue SFCs using `<script>` tags. Add a `README.md` file with project overview, setup instructions, and directory structure explanation.",
+            "status": "done",
+            "testStrategy": "Confirm that `vite.config.js` is present and correctly configured, and that `README.md` contains clear, accurate information."
+          },
+          {
+            "id": 4,
+            "title": "Verify Plain JS and Vue SFC Compatibility",
+            "description": "Ensure the project supports both plain JavaScript modules and Vue Single File Components with `<script>` tags.",
+            "dependencies": [
+              3
+            ],
+            "details": "Test importing and using a plain JS module and a Vue SFC (with only `<script>` tags) in the `src/ui` directory. Adjust Vite configuration if necessary to support both file types.\n<info added on 2025-06-17T03:10:26.758Z>\nVerified Vue SFC and plain JS module compatibility successfully:\n- Created TestComponent.vue with plain JavaScript (no TypeScript)\n- Created testModule.js as a plain ES module\n- Updated main.js to import and use both\n- Installed Vue 3 dependency\n- Started dev server successfully at localhost:5173\n- Both Vue components and plain JS modules are working correctly\n- Project structure supports the hybrid approach as required\n</info added on 2025-06-17T03:10:26.758Z>",
+            "status": "done",
+            "testStrategy": "Add sample files for both module types, run the dev server, and verify that both are correctly recognized and rendered without errors."
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Implement Hardware Detection",
+        "description": "Detect and estimate local GPU/CPU capabilities for hardware-aware guidance.",
+        "details": "Implement `hwDetect.js` in `src/utils/`. Use `navigator.gpu.requestAdapter()` to detect WebGPU, estimate TFLOPs, and check device memory. Expose functions to get GPU info, TFLOPs, and memory. Use `navigator.deviceMemory` as fallback.",
+        "testStrategy": "Test on multiple devices/browsers. Verify correct detection of WebGPU, TFLOPs estimation, and memory reporting.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Detect WebGPU Support and Request Adapter",
+            "description": "Implement logic to check for WebGPU support and request a GPU adapter using navigator.gpu.requestAdapter().",
+            "dependencies": [],
+            "details": "In hwDetect.js, check if navigator.gpu exists to determine WebGPU support. If supported, use navigator.gpu.requestAdapter() to obtain a GPUAdapter instance. Handle cases where WebGPU is not available by preparing to use fallback detection methods.",
+            "status": "pending",
+            "testStrategy": "Test in browsers with and without WebGPU support. Confirm correct detection and error handling."
+          },
+          {
+            "id": 2,
+            "title": "Extract GPU Information and Estimate TFLOPs",
+            "description": "Retrieve GPU details from the adapter and estimate theoretical TFLOPs if possible.",
+            "dependencies": [],
+            "details": "From the GPUAdapter, extract available properties such as name, features, and limits. If possible, use these details to estimate the GPU's theoretical TFLOPs. If direct TFLOPs estimation is not feasible, document the limitation and provide the most relevant available metrics.",
+            "status": "pending",
+            "testStrategy": "Verify that GPU information is correctly extracted and TFLOPs estimation logic works as expected for known devices."
+          },
+          {
+            "id": 3,
+            "title": "Detect CPU and Device Memory Capabilities",
+            "description": "Implement fallback detection for CPU and device memory using navigator.deviceMemory and other available APIs.",
+            "dependencies": [],
+            "details": "If WebGPU is unavailable or insufficient, use navigator.deviceMemory to estimate available RAM. Optionally, use other browser APIs to infer CPU capabilities (such as navigator.hardwareConcurrency for logical cores). Ensure fallback logic is robust and provides meaningful estimates.",
+            "status": "pending",
+            "testStrategy": "Test fallback detection on devices without WebGPU support and confirm accurate memory and CPU reporting."
+          },
+          {
+            "id": 4,
+            "title": "Expose Hardware Info Retrieval Functions",
+            "description": "Design and implement functions in hwDetect.js to expose GPU info, TFLOPs, and memory estimates for use elsewhere in the application.",
+            "dependencies": [],
+            "details": "Create and export functions such as getGPUInfo(), getTFLOPsEstimate(), and getDeviceMemory(). Ensure these functions return consistent, structured data regardless of detection path (WebGPU or fallback). Document the API for consumers.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to verify that each function returns expected results in various hardware/browser scenarios."
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Build Model and Corpus Input UI",
+        "description": "Develop UI components for model selection and corpus input.",
+        "details": "Implement `HeaderBar.vue` with model dropdown, URL input, corpus file upload, and textarea for pasting text. Use plain JS modules. Ensure file upload and textarea tokenization are functional.",
+        "testStrategy": "Test model selection, URL input, file upload, and textarea input. Verify tokenization on paste/upload.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Model Selection Dropdown",
+            "description": "Create a dropdown component within HeaderBar.vue for selecting available models.",
+            "dependencies": [],
+            "details": "Add a dropdown menu to the HeaderBar.vue component using plain JS modules. Populate the dropdown with model options provided by the application context or a static list. Ensure the selected model is tracked in the component's state and emits an event or updates a binding when changed.",
+            "status": "pending",
+            "testStrategy": "Verify that the dropdown renders, displays all model options, and updates the selected model state correctly on user interaction."
+          },
+          {
+            "id": 2,
+            "title": "Add URL Input Field for Corpus Source",
+            "description": "Integrate a text input field for users to enter a corpus source URL.",
+            "dependencies": [
+              1
+            ],
+            "details": "Within HeaderBar.vue, add a labeled input field for entering a URL. Validate the input for proper URL format and update the component state on change. Optionally, provide feedback for invalid URLs.",
+            "status": "pending",
+            "testStrategy": "Test that the input accepts valid URLs, rejects invalid ones, and updates the state or emits an event on change."
+          },
+          {
+            "id": 3,
+            "title": "Implement Corpus File Upload Functionality",
+            "description": "Enable users to upload a corpus file and ensure its contents are processed for tokenization.",
+            "dependencies": [
+              2
+            ],
+            "details": "Add a file input to HeaderBar.vue for uploading text files. On file selection, read the file contents using FileReader and trigger tokenization logic. Ensure only supported file types (e.g., .txt) are accepted and handle errors gracefully.",
+            "status": "pending",
+            "testStrategy": "Upload various file types, confirm only valid files are processed, and verify that file contents are correctly read and passed to the tokenization function."
+          },
+          {
+            "id": 4,
+            "title": "Add Textarea for Direct Corpus Input and Tokenization",
+            "description": "Provide a textarea for users to paste corpus text and ensure the input is tokenized.",
+            "dependencies": [
+              3
+            ],
+            "details": "Insert a textarea into HeaderBar.vue for direct text input. On input or blur, trigger the tokenization logic. Ensure the component state reflects the textarea content and that tokenization results are accessible for downstream processing.",
+            "status": "pending",
+            "testStrategy": "Paste or type text into the textarea, confirm the state updates, and verify that tokenization occurs as expected."
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Develop Plan Estimator and Modal",
+        "description": "Create UI for plan selection and hardware-aware guidance.",
+        "details": "Implement `PlanModal.vue` to show hardware check results and predicted runtimes for Adapter vs Full modes. Use data from `hwDetect.js`. Display ETA and memory footprint. Allow user to select mode based on hardware.",
+        "testStrategy": "Test modal displays correct hardware info and recommendations. Verify ETA and memory calculations.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Integrate Hardware Detection Data Source",
+            "description": "Connect the UI to the hardware detection logic by importing and utilizing data from `hwDetect.js`.",
+            "dependencies": [],
+            "details": "Ensure `PlanModal.vue` can access and reactively update based on the hardware check results provided by `hwDetect.js`. Define the data structure and state management approach for passing hardware info to the modal.",
+            "status": "pending",
+            "testStrategy": "Mock hardware detection outputs and verify that the modal receives and displays the correct data."
+          },
+          {
+            "id": 2,
+            "title": "Calculate and Display Predicted Runtimes and Memory Footprint",
+            "description": "Implement logic in `PlanModal.vue` to estimate and show ETA and memory usage for Adapter and Full modes based on hardware data.",
+            "dependencies": [
+              1
+            ],
+            "details": "Develop functions or computed properties that use hardware specs to predict runtimes and memory footprint for both modes. Display these estimates clearly in the modal UI.",
+            "status": "pending",
+            "testStrategy": "Provide various hardware profiles and confirm that the displayed predictions update accordingly and are reasonable."
+          },
+          {
+            "id": 3,
+            "title": "Design and Build Plan Selection Modal UI",
+            "description": "Create the user interface for `PlanModal.vue`, presenting hardware check results, predicted runtimes, memory footprint, and mode options.",
+            "dependencies": [
+              2
+            ],
+            "details": "Design a clear, accessible modal layout. Include sections for hardware summary, runtime/memory estimates, and selectable options for Adapter vs Full mode. Use appropriate UI components for clarity and usability.",
+            "status": "pending",
+            "testStrategy": "Perform UI/UX review and ensure all required information is visible and selectable. Test accessibility and responsiveness."
+          },
+          {
+            "id": 4,
+            "title": "Implement Mode Selection and Confirmation Logic",
+            "description": "Enable users to select their preferred mode and confirm their choice, ensuring the selection is communicated to the parent context or application state.",
+            "dependencies": [
+              3
+            ],
+            "details": "Add interactive controls for mode selection. Implement event handling to update the selected mode and emit or store the user's choice for downstream use.",
+            "status": "pending",
+            "testStrategy": "Test that mode selection updates the application state correctly and that the modal closes or confirms as expected upon user action."
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Implement Training Dashboard",
+        "description": "Build the training console for monitoring progress.",
+        "details": "Develop `TrainConsole.vue` with token counter, loss chart, throughput, ETA, and abort button. Use vanilla JS for charting. Connect to training worker for real-time updates.",
+        "testStrategy": "Test real-time updates of token count, loss, throughput, and ETA. Verify abort functionality.",
+        "priority": "medium",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create TrainConsole.vue Component Structure",
+            "description": "Set up the basic Vue component structure for TrainConsole.vue, including layout and placeholders for all required dashboard elements.",
+            "dependencies": [],
+            "details": "Define the Vue single-file component with template, script, and style sections. Add placeholders for the token counter, loss chart, throughput display, ETA, and abort button. Use semantic HTML and scoped CSS for layout. Ensure the component is ready to receive real-time data updates.",
+            "status": "pending",
+            "testStrategy": "Render the component in isolation and verify that all placeholders appear as expected."
+          },
+          {
+            "id": 2,
+            "title": "Implement Real-Time Data Connection",
+            "description": "Connect TrainConsole.vue to the training worker to receive real-time updates for tokens, loss, throughput, and ETA.",
+            "dependencies": [],
+            "details": "Establish a communication channel (e.g., WebSocket, event bus, or worker messaging) between the component and the training worker. Set up reactive data properties in Vue to store incoming values. Update the UI placeholders to display live data as it arrives.",
+            "status": "pending",
+            "testStrategy": "Simulate training worker messages and verify that the component updates all fields in real time."
+          },
+          {
+            "id": 3,
+            "title": "Build Loss Chart with Vanilla JS",
+            "description": "Implement a dynamic loss chart using vanilla JavaScript within the Vue component.",
+            "dependencies": [],
+            "details": "Add a canvas or SVG element for the chart. Use vanilla JS to draw and update the loss chart as new data arrives. Ensure the chart is responsive and efficiently updates with each new data point.",
+            "status": "pending",
+            "testStrategy": "Feed sample loss data and confirm the chart renders and updates correctly in response to real-time changes."
+          },
+          {
+            "id": 4,
+            "title": "Implement Abort Button Functionality",
+            "description": "Add an abort button to the dashboard that allows users to stop the training process.",
+            "dependencies": [],
+            "details": "Create a button in the component and wire it to send an abort signal to the training worker. Handle UI state changes (e.g., disabling the button after abort, showing confirmation). Ensure the component responds appropriately to the abort event.",
+            "status": "pending",
+            "testStrategy": "Click the abort button during a simulated training session and verify that the abort signal is sent and the UI updates accordingly."
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Integrate ONNX Runtime Web and Custom Kernels",
+        "description": "Set up ONNX Runtime Web with WebGPU EP and custom INT4 matmul kernels.",
+        "details": "Implement `onnxSession.js` in `src/trainers/`. Register custom INT4 matmul WGSL kernel in `loraKernels.wgsl`. Use IO-Binding and GraphCapture for efficient GPU usage. Support both Adapter and Full modes.",
+        "testStrategy": "Test ONNX session creation, custom kernel registration, and IO-Binding. Benchmark throughput.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set Up ONNX Runtime Web with WebGPU Execution Provider",
+            "description": "Install and configure ONNX Runtime Web in the project, ensuring WebGPU Execution Provider (EP) is enabled for GPU acceleration.",
+            "dependencies": [],
+            "details": "Add the onnxruntime-web package to the project. Import ONNX Runtime Web in `onnxSession.js` and configure it to use the WebGPU EP. Verify WebGPU support in the browser and initialize the ONNX session with the appropriate backend settings. Reference ONNX Runtime Web documentation for correct import and initialization patterns.",
+            "status": "pending",
+            "testStrategy": "Run a simple ONNX model inference in the browser and confirm that WebGPU is being used as the execution provider."
+          },
+          {
+            "id": 2,
+            "title": "Implement and Register Custom INT4 Matmul WGSL Kernel",
+            "description": "Develop a custom INT4 matrix multiplication kernel in WGSL and register it with ONNX Runtime Web for use in model inference.",
+            "dependencies": [
+              1
+            ],
+            "details": "Write the INT4 matmul kernel in `loraKernels.wgsl`. Integrate the kernel registration logic into the ONNX Runtime Web initialization flow in `onnxSession.js`. Ensure the kernel is correctly recognized and invoked during relevant model operations.",
+            "status": "pending",
+            "testStrategy": "Create unit tests or a demo model that exercises the INT4 matmul operation and verify correct execution and output."
+          },
+          {
+            "id": 3,
+            "title": "Integrate IO-Binding and GraphCapture for Efficient GPU Usage",
+            "description": "Enable IO-Binding and GraphCapture features to minimize CPU-GPU data transfers and optimize execution performance.",
+            "dependencies": [
+              2
+            ],
+            "details": "Modify `onnxSession.js` to use IO-Binding for keeping input and output tensors on the GPU. Implement GraphCapture for models with static shapes to further optimize execution. Follow ONNX Runtime Web documentation for correct usage of these features.",
+            "status": "pending",
+            "testStrategy": "Benchmark inference latency and GPU memory usage before and after enabling IO-Binding and GraphCapture to confirm performance improvements."
+          },
+          {
+            "id": 4,
+            "title": "Support Adapter and Full Modes in ONNX Session",
+            "description": "Extend the ONNX session logic to support both Adapter and Full modes, ensuring compatibility with different model configurations.",
+            "dependencies": [
+              3
+            ],
+            "details": "Update `onnxSession.js` to detect and handle both Adapter and Full modes, configuring model inputs, outputs, and execution flow accordingly. Ensure that custom kernels and GPU optimizations are applied consistently in both modes.",
+            "status": "pending",
+            "testStrategy": "Test inference in both Adapter and Full modes with representative models, verifying correctness and performance in each mode."
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Implement Training Worker and Data Loader",
+        "description": "Create background worker for training and data loading.",
+        "details": "Develop `training.worker.js` in `src/workers/` for off-main-thread training. Implement `datasetLoader.js` in `src/data/` for corpus loading and tokenization. Use dual-sequence packing and TF-IDF curriculum.",
+        "testStrategy": "Test worker starts and processes data. Verify dual-sequence packing and curriculum logic.",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          6
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design and Implement Data Loader Module",
+            "description": "Develop the `datasetLoader.js` module in `src/data/` to handle corpus loading, preprocessing, and tokenization.",
+            "dependencies": [],
+            "details": "Create functions to load datasets from disk or remote sources, preprocess raw text, and tokenize input using the project's tokenizer. Integrate dual-sequence packing logic and prepare data batches suitable for training. Ensure the loader can handle large datasets efficiently.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to verify correct loading, preprocessing, and tokenization of sample datasets. Test dual-sequence packing with edge cases."
+          },
+          {
+            "id": 2,
+            "title": "Implement TF-IDF Curriculum Sampling",
+            "description": "Integrate TF-IDF-based curriculum learning into the data loader to prioritize training samples.",
+            "dependencies": [
+              1
+            ],
+            "details": "Calculate TF-IDF scores for dataset samples and implement a sampling strategy that selects or weights samples based on their TF-IDF scores. Expose configuration options for curriculum parameters.",
+            "status": "pending",
+            "testStrategy": "Test that samples are selected or weighted according to TF-IDF scores. Validate curriculum progression over training epochs."
+          },
+          {
+            "id": 3,
+            "title": "Develop Training Worker Script",
+            "description": "Create `training.worker.js` in `src/workers/` to run model training off the main thread.",
+            "dependencies": [
+              2
+            ],
+            "details": "Set up a web worker or Node.js worker thread that receives training configuration and data batches from the main process. Implement message passing for status updates, progress, and results. Ensure the worker can invoke the model training loop using data from the loader.",
+            "status": "pending",
+            "testStrategy": "Test worker initialization, message handling, and correct execution of training steps. Simulate training runs with mock data."
+          },
+          {
+            "id": 4,
+            "title": "Integrate Data Loader with Training Worker",
+            "description": "Connect the data loader and curriculum logic to the training worker for seamless data flow during training.",
+            "dependencies": [
+              3
+            ],
+            "details": "Ensure the training worker requests and receives data batches from the loader as needed. Handle synchronization, error reporting, and resource cleanup. Validate that the training loop uses the correct data and curriculum sampling.",
+            "status": "pending",
+            "testStrategy": "Run end-to-end tests simulating full training sessions, verifying data flow, error handling, and correct integration of all components."
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Build Chat Panel and Adapter Toggle",
+        "description": "Develop chat interface with LoRA adapter toggle.",
+        "details": "Implement `ChatPanel.vue` with conversation display, prompt input, and toggle for using LoRA. Ensure seamless switching between base and LoRA modes.",
+        "testStrategy": "Test chat functionality, prompt submission, and LoRA toggle. Verify correct model response.",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          6
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design ChatPanel.vue Layout and Structure",
+            "description": "Create the foundational layout for ChatPanel.vue, including sections for conversation display, prompt input, and the LoRA adapter toggle.",
+            "dependencies": [],
+            "details": "Set up the Vue component structure with a main container. Add placeholders for the chat message list, input area, and a toggle switch for the LoRA adapter. Use Vue's template syntax to organize these sections clearly, ensuring the layout is responsive and accessible.",
+            "status": "pending",
+            "testStrategy": "Render the component and verify that all UI sections (chat display, input, toggle) are visible and correctly positioned."
+          },
+          {
+            "id": 2,
+            "title": "Implement Conversation Display and Message Handling",
+            "description": "Develop the logic and UI for displaying chat messages and handling new message input within ChatPanel.vue.",
+            "dependencies": [
+              1
+            ],
+            "details": "Bind a reactive array to store chat messages. Render messages in the conversation area using v-for. Implement a method to handle sending new messages from the input field, updating the message array and clearing the input. Optionally, add basic styling for message bubbles and timestamps.",
+            "status": "pending",
+            "testStrategy": "Send test messages and verify they appear in the conversation area in real time and in the correct order."
+          },
+          {
+            "id": 3,
+            "title": "Add LoRA Adapter Toggle Functionality",
+            "description": "Integrate a toggle switch in ChatPanel.vue to enable or disable the LoRA adapter, updating the chat mode accordingly.",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement a toggle UI element (e.g., switch or checkbox) bound to a reactive property (e.g., isLoRAEnabled). Ensure that toggling updates the chat mode state. Display the current mode (Base or LoRA) in the UI for user clarity.",
+            "status": "pending",
+            "testStrategy": "Toggle the switch and verify that the UI reflects the current mode and that the state changes as expected."
+          },
+          {
+            "id": 4,
+            "title": "Integrate Mode Switching Logic for Message Sending",
+            "description": "Ensure that message sending logic respects the current adapter mode (Base or LoRA) and routes messages accordingly.",
+            "dependencies": [
+              3
+            ],
+            "details": "Update the message sending method to check the isLoRAEnabled state. Route messages through the appropriate handler or API endpoint based on the selected mode. Ensure seamless switching between modes without losing conversation context.",
+            "status": "pending",
+            "testStrategy": "Send messages in both Base and LoRA modes, verifying that each message is processed using the correct adapter and that switching modes does not disrupt the chat flow."
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Implement Adapter Export and Import",
+        "description": "Enable download and drag-back-in of trained adapters.",
+        "details": "Implement `safetensorExport.js` in `src/utils/` for exporting adapters as `.safetensors`. Support drag-and-drop import of adapters. Validate file format and compatibility.",
+        "testStrategy": "Test adapter export and import. Verify file integrity and model compatibility.",
+        "priority": "medium",
+        "dependencies": [
+          6,
+          7
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Adapter Export Functionality",
+            "description": "Develop the logic to export trained adapters as .safetensors files, enabling users to download them from the application.",
+            "dependencies": [],
+            "details": "Create `safetensorExport.js` in `src/utils/`. Implement functions to serialize adapter data and trigger a file download in the .safetensors format. Ensure the export process preserves all necessary adapter metadata and structure.",
+            "status": "pending",
+            "testStrategy": "Test by exporting various adapters and verifying the downloaded files are correctly formatted and contain expected data."
+          },
+          {
+            "id": 2,
+            "title": "Implement Drag-and-Drop Import UI",
+            "description": "Add a user interface component that allows users to drag and drop .safetensors files into the application for importing adapters.",
+            "dependencies": [
+              1
+            ],
+            "details": "Design and implement a drag-and-drop area in the relevant UI. Integrate event handlers to capture dropped files and pass them to the import logic. Provide user feedback for successful and failed drops.",
+            "status": "pending",
+            "testStrategy": "Test by dragging valid and invalid files into the UI and confirming correct event handling and user feedback."
+          },
+          {
+            "id": 3,
+            "title": "Validate Imported Adapter Files",
+            "description": "Implement validation logic to ensure imported files are in the correct .safetensors format and compatible with the application.",
+            "dependencies": [
+              2
+            ],
+            "details": "Parse the dropped file, check for .safetensors format, and verify required adapter metadata and structure. Display clear error messages for invalid or incompatible files.",
+            "status": "pending",
+            "testStrategy": "Test with a variety of files (valid, corrupted, wrong format) and confirm that only valid adapters are accepted and errors are handled gracefully."
+          },
+          {
+            "id": 4,
+            "title": "Integrate Import Logic and Adapter Loading",
+            "description": "Connect the validated import process to the application's adapter loading mechanism, ensuring imported adapters are available for use.",
+            "dependencies": [
+              3
+            ],
+            "details": "On successful validation, deserialize the adapter data and register it within the application's adapter management system. Update UI and internal state to reflect the newly imported adapter.",
+            "status": "pending",
+            "testStrategy": "Test by importing adapters and verifying they appear in the application and function as expected."
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Develop Footer and Status Bar",
+        "description": "Build footer for GPU status, memory usage, ETA, and download.",
+        "details": "Implement `FooterStatus.vue` to display GPU name, memory usage bar, current mode, and download button. Update in real-time based on training progress.",
+        "testStrategy": "Test real-time updates of GPU status, memory, mode, and download button. Verify accuracy of displayed info.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          5
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design FooterStatus.vue Component Layout",
+            "description": "Create the visual and structural layout for the FooterStatus.vue component, ensuring space for GPU name, memory usage bar, current mode, ETA, and download button.",
+            "dependencies": [],
+            "details": "Define the component structure using Vue.js single-file component conventions. Use appropriate HTML and CSS (or a CSS framework) to lay out the footer elements. Ensure the design is responsive and visually distinct for each status item.",
+            "status": "pending",
+            "testStrategy": "Render the component with static mock data to verify layout, spacing, and responsiveness across screen sizes."
+          },
+          {
+            "id": 2,
+            "title": "Implement Real-Time Data Integration",
+            "description": "Connect FooterStatus.vue to the application's data sources to receive real-time updates for GPU status, memory usage, ETA, and training progress.",
+            "dependencies": [
+              1
+            ],
+            "details": "Use Vue's reactivity system and appropriate state management (Vuex, Pinia, or props/events) to bind live data to the component. Set up listeners or subscriptions to backend events or APIs that provide the required status information.",
+            "status": "pending",
+            "testStrategy": "Simulate real-time data updates and verify that the footer updates immediately and accurately reflects changes."
+          },
+          {
+            "id": 3,
+            "title": "Develop Memory Usage Bar and Status Indicators",
+            "description": "Implement a dynamic memory usage bar and clear status indicators for GPU, mode, and ETA within the footer.",
+            "dependencies": [
+              2
+            ],
+            "details": "Create a visual progress bar for memory usage using SVG, Canvas, or CSS. Display GPU name, current mode, and ETA with clear, accessible labels. Ensure all indicators update in real-time based on incoming data.",
+            "status": "pending",
+            "testStrategy": "Test with varying memory usage values and status changes to confirm correct rendering and updates."
+          },
+          {
+            "id": 4,
+            "title": "Add Download Button with Functionality",
+            "description": "Integrate a download button into the footer that allows users to download relevant data or results, updating its state based on training progress.",
+            "dependencies": [
+              3
+            ],
+            "details": "Implement the download button with appropriate UI feedback (enabled/disabled, loading state). Connect the button to the backend or file system to trigger downloads. Ensure the button's availability and label reflect the current training status.",
+            "status": "pending",
+            "testStrategy": "Test the button's enabled/disabled states, trigger downloads, and verify correct file delivery and user feedback."
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "created": "2025-06-17T02:56:16.391Z",
+      "updated": "2025-06-17T03:10:37.747Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

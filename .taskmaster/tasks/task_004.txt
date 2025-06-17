@@ -1,0 +1,37 @@
+# Task ID: 4
+# Title: Develop Plan Estimator and Modal
+# Status: pending
+# Dependencies: 2, 3
+# Priority: medium
+# Description: Create UI for plan selection and hardware-aware guidance.
+# Details:
+Implement `PlanModal.vue` to show hardware check results and predicted runtimes for Adapter vs Full modes. Use data from `hwDetect.js`. Display ETA and memory footprint. Allow user to select mode based on hardware.
+
+# Test Strategy:
+Test modal displays correct hardware info and recommendations. Verify ETA and memory calculations.
+
+# Subtasks:
+## 1. Integrate Hardware Detection Data Source [pending]
+### Dependencies: None
+### Description: Connect the UI to the hardware detection logic by importing and utilizing data from `hwDetect.js`.
+### Details:
+Ensure `PlanModal.vue` can access and reactively update based on the hardware check results provided by `hwDetect.js`. Define the data structure and state management approach for passing hardware info to the modal.
+
+## 2. Calculate and Display Predicted Runtimes and Memory Footprint [pending]
+### Dependencies: 4.1
+### Description: Implement logic in `PlanModal.vue` to estimate and show ETA and memory usage for Adapter and Full modes based on hardware data.
+### Details:
+Develop functions or computed properties that use hardware specs to predict runtimes and memory footprint for both modes. Display these estimates clearly in the modal UI.
+
+## 3. Design and Build Plan Selection Modal UI [pending]
+### Dependencies: 4.2
+### Description: Create the user interface for `PlanModal.vue`, presenting hardware check results, predicted runtimes, memory footprint, and mode options.
+### Details:
+Design a clear, accessible modal layout. Include sections for hardware summary, runtime/memory estimates, and selectable options for Adapter vs Full mode. Use appropriate UI components for clarity and usability.
+
+## 4. Implement Mode Selection and Confirmation Logic [pending]
+### Dependencies: 4.3
+### Description: Enable users to select their preferred mode and confirm their choice, ensuring the selection is communicated to the parent context or application state.
+### Details:
+Add interactive controls for mode selection. Implement event handling to update the selected mode and emit or store the user's choice for downstream use.
+

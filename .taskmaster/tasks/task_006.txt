@@ -1,0 +1,37 @@
+# Task ID: 6
+# Title: Integrate ONNX Runtime Web and Custom Kernels
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Set up ONNX Runtime Web with WebGPU EP and custom INT4 matmul kernels.
+# Details:
+Implement `onnxSession.js` in `src/trainers/`. Register custom INT4 matmul WGSL kernel in `loraKernels.wgsl`. Use IO-Binding and GraphCapture for efficient GPU usage. Support both Adapter and Full modes.
+
+# Test Strategy:
+Test ONNX session creation, custom kernel registration, and IO-Binding. Benchmark throughput.
+
+# Subtasks:
+## 1. Set Up ONNX Runtime Web with WebGPU Execution Provider [pending]
+### Dependencies: None
+### Description: Install and configure ONNX Runtime Web in the project, ensuring WebGPU Execution Provider (EP) is enabled for GPU acceleration.
+### Details:
+Add the onnxruntime-web package to the project. Import ONNX Runtime Web in `onnxSession.js` and configure it to use the WebGPU EP. Verify WebGPU support in the browser and initialize the ONNX session with the appropriate backend settings. Reference ONNX Runtime Web documentation for correct import and initialization patterns.
+
+## 2. Implement and Register Custom INT4 Matmul WGSL Kernel [pending]
+### Dependencies: 6.1
+### Description: Develop a custom INT4 matrix multiplication kernel in WGSL and register it with ONNX Runtime Web for use in model inference.
+### Details:
+Write the INT4 matmul kernel in `loraKernels.wgsl`. Integrate the kernel registration logic into the ONNX Runtime Web initialization flow in `onnxSession.js`. Ensure the kernel is correctly recognized and invoked during relevant model operations.
+
+## 3. Integrate IO-Binding and GraphCapture for Efficient GPU Usage [pending]
+### Dependencies: 6.2
+### Description: Enable IO-Binding and GraphCapture features to minimize CPU-GPU data transfers and optimize execution performance.
+### Details:
+Modify `onnxSession.js` to use IO-Binding for keeping input and output tensors on the GPU. Implement GraphCapture for models with static shapes to further optimize execution. Follow ONNX Runtime Web documentation for correct usage of these features.
+
+## 4. Support Adapter and Full Modes in ONNX Session [pending]
+### Dependencies: 6.3
+### Description: Extend the ONNX session logic to support both Adapter and Full modes, ensuring compatibility with different model configurations.
+### Details:
+Update `onnxSession.js` to detect and handle both Adapter and Full modes, configuring model inputs, outputs, and execution flow accordingly. Ensure that custom kernels and GPU optimizations are applied consistently in both modes.
+

@@ -1,0 +1,37 @@
+# Task ID: 3
+# Title: Build Model and Corpus Input UI
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Develop UI components for model selection and corpus input.
+# Details:
+Implement `HeaderBar.vue` with model dropdown, URL input, corpus file upload, and textarea for pasting text. Use plain JS modules. Ensure file upload and textarea tokenization are functional.
+
+# Test Strategy:
+Test model selection, URL input, file upload, and textarea input. Verify tokenization on paste/upload.
+
+# Subtasks:
+## 1. Implement Model Selection Dropdown [pending]
+### Dependencies: None
+### Description: Create a dropdown component within HeaderBar.vue for selecting available models.
+### Details:
+Add a dropdown menu to the HeaderBar.vue component using plain JS modules. Populate the dropdown with model options provided by the application context or a static list. Ensure the selected model is tracked in the component's state and emits an event or updates a binding when changed.
+
+## 2. Add URL Input Field for Corpus Source [pending]
+### Dependencies: 3.1
+### Description: Integrate a text input field for users to enter a corpus source URL.
+### Details:
+Within HeaderBar.vue, add a labeled input field for entering a URL. Validate the input for proper URL format and update the component state on change. Optionally, provide feedback for invalid URLs.
+
+## 3. Implement Corpus File Upload Functionality [pending]
+### Dependencies: 3.2
+### Description: Enable users to upload a corpus file and ensure its contents are processed for tokenization.
+### Details:
+Add a file input to HeaderBar.vue for uploading text files. On file selection, read the file contents using FileReader and trigger tokenization logic. Ensure only supported file types (e.g., .txt) are accepted and handle errors gracefully.
+
+## 4. Add Textarea for Direct Corpus Input and Tokenization [pending]
+### Dependencies: 3.3
+### Description: Provide a textarea for users to paste corpus text and ensure the input is tokenized.
+### Details:
+Insert a textarea into HeaderBar.vue for direct text input. On input or blur, trigger the tokenization logic. Ensure the component state reflects the textarea content and that tokenization results are accessible for downstream processing.
+
