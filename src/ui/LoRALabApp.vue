@@ -40,18 +40,22 @@
 
       <!-- Training Console (Right) -->
       <div class="console-section">
-        <TrainConsole 
-          :trainingConfig="trainingConfig"
-          :hardwareInfo="hardwareInfo"
-          :isTraining="isTraining"
-          ref="trainConsole"
-          @start-training="handleTrainingRequest"
-          @pause-training="handleTrainingPaused"
-          @resume-training="handleTrainingResumed"
-          @stop-training="handleTrainingStopped"
-          @abort-training="handleTrainingAborted"
-          @reset-training="handleTrainingCompleted"
-        />
+              <TrainConsole 
+        :trainingConfig="trainingConfig"
+        :hardwareInfo="hardwareInfo"
+        :isTraining="isTraining"
+        :isPaused="isPaused"
+        :trainingCompleted="trainingCompleted"
+        :trainingStatus="trainingStatus"
+        :canStartTraining="canStartTraining"
+        ref="trainConsole"
+        @start-training="handleTrainingRequest"
+        @pause-training="handleTrainingPaused"
+        @resume-training="handleTrainingResumed"
+        @stop-training="handleTrainingStopped"
+        @abort-training="handleTrainingAborted"
+        @reset-training="handleTrainingCompleted"
+      />
       </div>
     </div>
 
@@ -246,11 +250,16 @@ export default {
         currentStep: 0,
         totalSteps: 1000,
         currentLoss: 0,
+        averageLoss: 0,
         memoryUsage: 2.3,
         learningRate: '3e-4',
         batchSize: 4,
         loraRank: 4,
-        lossHistory: []
+        lossHistory: [],
+        isTraining: false,
+        isPaused: false,
+        estimatedTimeRemaining: 0,
+        rankDecision: ''
       },
 
       // Adapter Management
@@ -387,17 +396,56 @@ export default {
 
     setupTrainingEngineListeners() {
       trainingEngine.on('trainingProgress', (progressData) => {
-        this.trainingStatus = { ...this.trainingStatus, ...progressData };
+        // Map all progress data to training status
+        this.trainingStatus = { 
+          ...this.trainingStatus,
+          progress: progressData.progress || 0,
+          tokensProcessed: progressData.step * (this.trainingConfig?.config?.batchSize || 4) * (this.trainingConfig?.config?.sequenceLength || 512) || 0,
+          currentStep: progressData.step || 0,
+          totalSteps: progressData.totalSteps || 1000,
+          currentLoss: progressData.loss || 0,
+          averageLoss: progressData.averageLoss || 0,
+          throughput: progressData.throughput || 0,
+          eta: progressData.eta || 0,
+          estimatedTimeRemaining: progressData.eta || 0,
+          memoryUsage: progressData.memoryUsage || 2.3,
+          learningRate: this.trainingConfig?.config?.learningRate || '3e-4',
+          batchSize: this.trainingConfig?.config?.batchSize || 4,
+          loraRank: progressData.currentRank || this.trainingConfig?.config?.adapterConfig?.rank || 4,
+          rankDecision: progressData.rankDecision || '',
+          isTraining: true,
+          isPaused: false
+        };
+        
+        // Update loss history
+        if (progressData.loss !== undefined && progressData.loss > 0) {
+          this.trainingStatus.lossHistory.push(progressData.loss);
+          // Keep only last 1000 data points to prevent memory issues
+          if (this.trainingStatus.lossHistory.length > 1000) {
+            this.trainingStatus.lossHistory = this.trainingStatus.lossHistory.slice(-500);
+          }
+        }
+        
+        // Update current memory usage
+        if (progressData.memoryUsage) {
+          this.currentMemoryUsage = progressData.memoryUsage;
+        }
       });
 
       trainingEngine.on('trainingStarted', (data) => {
         this.trainingCompleted = false;
-        // Update training status instead of computed properties
+        // Initialize training status with proper values
         this.trainingStatus = { 
           ...this.trainingStatus, 
-          ...data, 
+          ...data,
           isTraining: true, 
-          isPaused: false 
+          isPaused: false,
+          progress: 0,
+          tokensProcessed: 0,
+          currentStep: 0,
+          totalSteps: data.totalSteps || 1000,
+          lossHistory: [],
+          mode: this.selectedTrainingMode === 'adapter' ? 'Adapter (LoRA)' : 'Full Fine-tuning'
         };
       });
 
@@ -456,6 +504,15 @@ export default {
           isPaused: false 
         };
         // Optionally show an error to the user
+      });
+
+      // Add handler for rank updates
+      trainingEngine.on('rankUpdated', (data) => {
+        console.log('Rank updated:', data);
+        this.trainingStatus = {
+          ...this.trainingStatus,
+          loraRank: data.newRank
+        };
       });
     },
 
@@ -640,11 +697,18 @@ export default {
         }
         
         const dataset = await loadDataset(text)
+        const tokenCount = Math.floor(text.length / 4) // Rough estimation: 4 chars per token
         this.corpusInfo = {
           text: text,
-          tokenCount: dataset.tokenCount,
+          tokenCount: tokenCount,
           characterCount: text.length,
-          estimatedTrainingTime: this.estimateTrainingTime(dataset.tokenCount)
+          estimatedTrainingTime: this.estimateTrainingTime(tokenCount)
+        }
+        
+        // Update training status with new token count
+        this.trainingStatus = {
+          ...this.trainingStatus,
+          totalTokens: tokenCount
         }
         
         this.showCorpusModal = false
@@ -683,6 +747,17 @@ export default {
         totalTokens: this.corpusInfo?.tokenCount || 1000000,
         modelInfo: this.selectedModel
       }
+      
+      // Update training status with initial values
+      this.trainingStatus = {
+        ...this.trainingStatus,
+        mode: selection.mode === 'adapter' ? 'Adapter (LoRA)' : 'Full Fine-tuning',
+        totalTokens: this.corpusInfo?.tokenCount || 1000000,
+        batchSize: selection.config?.batchSize || 4,
+        learningRate: selection.config?.learningRate || '3e-4',
+        loraRank: selection.config?.adapterConfig?.rank || 4
+      }
+      
       this.showPlanModal = false
     },
 
@@ -707,8 +782,14 @@ export default {
         trainingConfig: {
           ...this.trainingConfig.config, // Base config from PlanModal
           mode: this.selectedTrainingMode,
+          sequenceLength: this.trainingConfig.config?.sequenceLength || 512,
+          batchSize: this.trainingConfig.config?.batchSize || 4,
+          maxSteps: this.trainingConfig.config?.maxSteps || 1000,
+          learningRate: this.trainingConfig.config?.learningRate || 3e-4,
           // Nest adapter specific config
           adapterConfig: {
+            rank: this.trainingConfig.config?.adapterConfig?.rank || this.trainingConfig.config?.rank || 4,
+            alpha: this.trainingConfig.config?.adapterConfig?.alpha || this.trainingConfig.config?.alpha || 8,
             ...this.trainingConfig.config
           }
         },

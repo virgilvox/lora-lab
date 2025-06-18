@@ -34,11 +34,6 @@ fn int4_matmul_main(@builtin(global_invocation_id) global_id: vec3<u32>,
     let row = global_id.y;
     let col = global_id.x;
     
-    // Bounds check
-    if (row >= params.M || col >= params.N) {
-        return;
-    }
-    
     var sum: f32 = 0.0;
     
     // Tile-based computation for cache efficiency
@@ -46,42 +41,48 @@ fn int4_matmul_main(@builtin(global_invocation_id) global_id: vec3<u32>,
     
     for (var t: u32 = 0u; t < numTiles; t++) {
         // Load tile A into shared memory
-        let tileRow = local_id.y;
-        let tileCol = local_id.x;
-        let globalRow = workgroup_id.y * TILE_SIZE + tileRow;
-        let globalColA = t * TILE_SIZE + tileCol;
+        let tileRowA = local_id.y;
+        let tileColA = local_id.x;
+        let globalRowA = workgroup_id.y * TILE_SIZE + tileRowA;
+        let globalColA = t * TILE_SIZE + tileColA;
         
-        if (globalRow < params.M && globalColA < params.K) {
-            tileA[tileRow][tileCol] = unpack_int4_to_float_A(globalRow * params.K + globalColA);
+        if (globalRowA < params.M && globalColA < params.K) {
+            tileA[tileRowA][tileColA] = unpack_int4_to_float_A(globalRowA * params.K + globalColA);
         } else {
-            tileA[tileRow][tileCol] = 0.0;
+            tileA[tileRowA][tileColA] = 0.0;
         }
         
         // Load tile B into shared memory  
-        let globalRowB = t * TILE_SIZE + tileRow;
-        let globalColB = workgroup_id.x * TILE_SIZE + tileCol;
+        let tileRowB = local_id.y;
+        let tileColB = local_id.x;
+        let globalRowB = t * TILE_SIZE + tileRowB;
+        let globalColB = workgroup_id.x * TILE_SIZE + tileColB;
         
         if (globalRowB < params.K && globalColB < params.N) {
-            tileB[tileRow][tileCol] = unpack_int4_to_float_B(globalRowB * params.N + globalColB);
+            tileB[tileRowB][tileColB] = unpack_int4_to_float_B(globalRowB * params.N + globalColB);
         } else {
-            tileB[tileRow][tileCol] = 0.0;
+            tileB[tileRowB][tileColB] = 0.0;
         }
         
-        // Synchronize workgroup
+        // Synchronize workgroup to ensure tiles are loaded
         workgroupBarrier();
         
-        // Compute partial dot product
-        for (var k: u32 = 0u; k < TILE_SIZE; k++) {
-            sum += tileA[local_id.y][k] * tileB[k][local_id.x];
+        // Compute partial dot product only for valid threads
+        if (row < params.M && col < params.N) {
+            for (var k: u32 = 0u; k < TILE_SIZE; k++) {
+                sum += tileA[local_id.y][k] * tileB[k][local_id.x];
+            }
         }
         
         // Synchronize before next tile
         workgroupBarrier();
     }
     
-    // Write result with scaling
-    let index = row * params.N + col;
-    matrixC[index] = params.alpha * sum + params.beta * matrixC[index];
+    // Write result with scaling for valid threads
+    if (row < params.M && col < params.N) {
+        let index = row * params.N + col;
+        matrixC[index] = params.alpha * sum + params.beta * matrixC[index];
+    }
 }
 
 // Helper function to unpack INT4 values to float from matrixA
@@ -165,14 +166,13 @@ fn lora_forward_A_main(@builtin(global_invocation_id) global_id: vec3<u32>,
     let i_tile = local_id.y;
     let num_tiles = (loraParams.inputDim + TILE_DIM_A - 1u) / TILE_DIM_A;
 
-    if (r >= loraParams.rank) {
-        return;
-    }
+    // Ensure threads with r >= rank participate in barriers but skip contributions
+    let thread_active = r < loraParams.rank;
 
     var sum: f32 = 0.0;
     for (var t: u32 = 0u; t < num_tiles; t = t + 1u) {
         let i_global = t * TILE_DIM_A + i_tile;
-        if (i_global < loraParams.inputDim) {
+        if (thread_active && i_global < loraParams.inputDim) {
             tileA_shared[i_tile][local_id.x] = input[i_global] * lora_matrixA[i_global * loraParams.rank + r];
         } else {
             tileA_shared[i_tile][local_id.x] = 0.0;
@@ -188,13 +188,13 @@ fn lora_forward_A_main(@builtin(global_invocation_id) global_id: vec3<u32>,
             workgroupBarrier();
         }
 
-        if (i_tile == 0u) {
+        if (thread_active && i_tile == 0u) {
             sum += tileA_shared[0u][local_id.x];
         }
     }
 
     // Only one thread per 'r' writes the final result
-    if (local_id.y == 0u) {
+    if (thread_active && local_id.y == 0u) {
         intermediateResult[r] = sum;
     }
 }
@@ -290,8 +290,8 @@ struct AdamParams {
 @group(2) @binding(0) var<uniform> adamParams: AdamParams;
 @group(2) @binding(1) var<storage, read> gradients: array<f32>;
 @group(2) @binding(2) var<storage, read_write> weights: array<f32>;
-@group(2) @binding(3) var<storage, read_write> momentum: array<u32>;    // 8-bit packed momentum
-@group(2) @binding(4) var<storage, read_write> velocity: array<u32>;    // 8-bit packed velocity
+@group(2) @binding(3) var<storage, read_write> momentum: array<atomic<u32>>;    // 8-bit packed momentum
+@group(2) @binding(4) var<storage, read_write> velocity: array<atomic<u32>>;    // 8-bit packed velocity
 @group(2) @binding(5) var<storage, read> momentum_scale: array<f32>; // Scaling factor for momentum
 @group(2) @binding(6) var<storage, read> velocity_scale: array<f32>; // Scaling factor for velocity
 
@@ -341,14 +341,14 @@ fn adam_optimizer_8bit_main(@builtin(global_invocation_id) global_id: vec3<u32>)
 fn dequantize_u8_momentum(index: u32, scale: f32) -> f32 {
     let packed_idx = index / 4u;
     let shift = (index % 4u) * 8u;
-    let packed_val = (momentum[packed_idx] >> shift) & 0xFFu;
+    let packed_val = (atomicLoad(&momentum[packed_idx]) >> shift) & 0xFFu;
     return (f32(packed_val) - 128.0) * scale;
 }
 
 fn dequantize_u8_velocity(index: u32, scale: f32) -> f32 {
     let packed_idx = index / 4u;
     let shift = (index % 4u) * 8u;
-    let packed_val = (velocity[packed_idx] >> shift) & 0xFFu;
+    let packed_val = (atomicLoad(&velocity[packed_idx]) >> shift) & 0xFFu;
     return (f32(packed_val) - 128.0) * scale;
 }
 

@@ -289,6 +289,7 @@ export default {
       trainingLog: [],
       showLog: false,
       autoScrollLog: true,
+      lastDataLength: 0,
     }
   },
   computed: {
@@ -316,10 +317,12 @@ export default {
     },
 
     initialLoss() {
-      return this.trainingStatus.lossHistory.length > 0 ? this.trainingStatus.lossHistory[0] : 0;
+      const lossHistory = this.trainingStatus?.lossHistory || [];
+      return lossHistory.length > 0 ? lossHistory[0] : 0;
     },
     bestLoss() {
-      return this.trainingStatus.lossHistory.length > 0 ? Math.min(...this.trainingStatus.lossHistory) : 0;
+      const lossHistory = this.trainingStatus?.lossHistory || [];
+      return lossHistory.length > 0 ? Math.min(...lossHistory) : 0;
     },
     lossImprovement() {
       if (this.initialLoss === 0) return 0;
@@ -327,11 +330,12 @@ export default {
     },
 
     displayedLossHistory() {
+      const lossHistory = this.trainingStatus?.lossHistory || [];
       if (this.chartTimeWindow === 'all') {
-        return this.trainingStatus.lossHistory;
+        return lossHistory;
       }
       const windowSize = parseInt(this.chartTimeWindow)
-      return this.trainingStatus.lossHistory.slice(-windowSize)
+      return lossHistory.slice(-windowSize)
     },
 
     etaAccuracy() {
@@ -339,6 +343,79 @@ export default {
       if (this.trainingStatus.tokensProcessed < 10000) return '± 50%'
       if (this.trainingStatus.tokensProcessed < 50000) return '± 20%'
       return '± 5%'
+    }
+  },
+  watch: {
+    'trainingStatus.lossHistory': {
+      handler(newVal) {
+        const lossHistory = newVal || [];
+        // Only trigger redraw if data has actually changed
+        if (lossHistory.length !== this.lastDataLength) {
+          this.lastDataLength = lossHistory.length
+          // Component doesn't have drawChart method, remove this
+        }
+      },
+      deep: true
+    },
+    showMovingAverage() {
+      // Component doesn't have drawChart method, remove this
+    },
+    // Watch for training status changes to add log entries
+    isTraining(newVal, oldVal) {
+      if (newVal && !oldVal) {
+        this.addLogEntry('success', 'Training started');
+        this.addLogEntry('info', `Mode: ${this.trainingStatus.mode || 'Unknown'}`);
+        this.addLogEntry('info', `Total steps: ${this.trainingStatus.totalSteps}`);
+        this.addLogEntry('info', `Batch size: ${this.trainingStatus.batchSize}`);
+        this.addLogEntry('info', `Learning rate: ${this.trainingStatus.learningRate}`);
+      } else if (!newVal && oldVal && !this.isPaused) {
+        this.addLogEntry('warning', 'Training stopped');
+      }
+    },
+    isPaused(newVal, oldVal) {
+      if (newVal && !oldVal) {
+        this.addLogEntry('warning', 'Training paused');
+      } else if (!newVal && oldVal && this.isTraining) {
+        this.addLogEntry('success', 'Training resumed');
+      }
+    },
+    'trainingStatus.currentStep': {
+      handler(newVal) {
+        // Log milestones
+        if (newVal > 0 && newVal % 100 === 0) {
+          this.addLogEntry('info', `Reached step ${newVal}/${this.trainingStatus.totalSteps}`);
+        }
+      }
+    },
+    'trainingStatus.currentLoss': {
+      handler(newVal, oldVal) {
+        // Log significant loss changes
+        if (oldVal && newVal && Math.abs(newVal - oldVal) > 0.1) {
+          const change = newVal < oldVal ? 'decreased' : 'increased';
+          this.addLogEntry('info', `Loss ${change} to ${newVal.toFixed(4)}`);
+        }
+      }
+    },
+    'trainingStatus.loraRank': {
+      handler(newVal, oldVal) {
+        if (oldVal && newVal !== oldVal) {
+          this.addLogEntry('warning', `LoRA rank changed from ${oldVal} to ${newVal}`);
+        }
+      }
+    },
+    'trainingStatus.rankDecision': {
+      handler(newVal) {
+        if (newVal) {
+          this.addLogEntry('info', `Rank scheduler: ${newVal}`);
+        }
+      }
+    },
+    trainingCompleted(newVal) {
+      if (newVal) {
+        this.addLogEntry('success', 'Training completed successfully!');
+        this.addLogEntry('info', `Final loss: ${this.trainingStatus.currentLoss.toFixed(4)}`);
+        this.addLogEntry('info', `Total tokens processed: ${this.formatNumber(this.trainingStatus.tokensProcessed)}`);
+      }
     }
   },
   mounted() {

@@ -118,6 +118,22 @@ export class TrainingEngine {
         this.isTraining = false;
         this.emit('error', { type: 'training', error: message.data });
         break;
+      case 'TRAINING_PAUSED':
+        this.emit('trainingPaused', message.data);
+        break;
+      case 'TRAINING_RESUMED':
+        this.emit('trainingResumed', message.data);
+        break;
+      case 'TRAINING_STOPPED':
+        this.isTraining = false;
+        this.emit('trainingStopped', message.data);
+        break;
+      case 'RANK_UPDATED':
+        this.emit('rankUpdated', message.data);
+        break;
+      case 'STATUS_UPDATE':
+        this.emit('statusUpdate', message.data);
+        break;
       default:
         // Forward other events if needed
         this.emit(message.type.toLowerCase(), message.data);

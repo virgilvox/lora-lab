@@ -258,6 +258,23 @@ async function handleInitializeAndStart(data) {
         config: trainingConfig
       }
     });
+    
+    // Send initial progress update
+    self.postMessage({
+      type: 'TRAINING_PROGRESS',
+      data: {
+        step: 0,
+        totalSteps,
+        progress: 0,
+        loss: 0,
+        averageLoss: 0,
+        throughput: 0,
+        eta: totalSteps * 2, // Rough initial estimate
+        memoryUsage: estimateMemoryUsage(),
+        currentRank: rankScheduler.getCurrentRank(),
+        rankDecision: 'Initial rank set'
+      }
+    });
 
     await runTrainingLoop();
 
@@ -318,12 +335,19 @@ async function runTrainingLoop() {
 
       currentStep++;
       
-      // Report progress every 10 steps
-      if (currentStep % 10 === 0) {
+      // Report progress more frequently at the start
+      const shouldReport = currentStep <= 10 || // Every step for first 10 steps
+                          (currentStep <= 100 && currentStep % 5 === 0) || // Every 5 steps for steps 11-100
+                          (currentStep > 100 && currentStep % 10 === 0); // Every 10 steps after that
+      
+      if (shouldReport) {
         const progress = (currentStep / totalSteps) * 100;
         const avgLoss = accumulatedLoss / Math.min(currentStep, 50); // Moving average
         const avgThroughput = throughputHistory.slice(-10).reduce((sum, t) => sum + t, 0) / Math.min(10, throughputHistory.length);
         const eta = calculateETA();
+        
+        // Estimate memory usage dynamically
+        memoryUsage = estimateMemoryUsage();
 
         self.postMessage({
           type: 'TRAINING_PROGRESS',
@@ -394,7 +418,16 @@ async function performTrainingStep(batch) {
   const labels = tokenizer(labelText, { return_tensors: "pt", padding: true, truncation: true }).input_ids;
 
   const { loss: realLoss } = await model({ ...inputs, labels });
-  const lossValue = await realLoss.item();
+
+  let lossValue;
+  if (realLoss === undefined) {
+    console.warn(
+      "The model did not return a loss value. This could be because the selected model doesn't support training, or the ONNX version is not configured for loss calculation. Falling back to simulated loss for this step."
+    );
+    lossValue = simulateLossCalculation(null, null);
+  } else {
+    lossValue = await realLoss.item();
+  }
 
   // --- Step 2: Mock WebGPU Kernel Execution ---
   // Execute the custom kernels with dummy data to validate the WebGPU pipeline.
@@ -471,7 +504,7 @@ async function performTrainingStep(batch) {
 
   // --- Step 3: Return Real Loss and Simulated Gradient ---
   return {
-    loss: lossValue ? lossValue : simulateLossCalculation(null, null),
+    loss: lossValue,
     gradientNorm: simulateGradientNorm(lossValue)
   };
 }
