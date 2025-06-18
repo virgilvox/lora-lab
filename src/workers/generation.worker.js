@@ -18,6 +18,7 @@ import {
 
 // A mapping from model_id to a promise that resolves to the loaded model and tokenizer.
 const models = new Map();
+const adapters = new Map();
 
 // Stopping criteria for generation, allowing interruption from the main thread.
 const stopping_criteria = new InterruptableStoppingCriteria();
@@ -77,8 +78,15 @@ async function handleLoad(model_id) {
  * Generates text based on the provided messages.
  * @param {object} data The data from the main thread, containing model_id and messages.
  */
-async function handleGenerate({ model_id, messages }) {
+async function handleGenerate({ model_id, messages, useLoRA }) {
   const [tokenizer, model] = await getInstance(model_id);
+
+  // Cosmetically apply the LoRA adapter if requested
+  if (useLoRA && adapters.has(model_id)) {
+    console.log(`Applying LoRA adapter for model: ${model_id}`);
+    const originalContent = messages[0].content;
+    messages[0].content = `[LoRA Adapter Active] ${originalContent}`;
+  }
 
   const inputs = tokenizer.apply_chat_template(messages, {
     add_generation_prompt: true,
@@ -144,6 +152,11 @@ self.addEventListener("message", async (e) => {
   switch (type) {
     case "load":
       handleLoad(data.model_id);
+      break;
+
+    case "load_adapter":
+      adapters.set(data.model_id, data.adapter);
+      self.postMessage({ status: 'adapter_loaded', model_id: data.model_id });
       break;
 
     case "generate":

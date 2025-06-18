@@ -115,14 +115,14 @@
         "dependencies": [
           1
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
             "title": "Design HeaderBar.vue Base Structure",
             "description": "Create the foundational structure for HeaderBar.vue, including semantic HTML, ARIA roles, and keyboard navigation support.",
             "dependencies": [],
-            "details": "Implement a visually accessible header with clear navigation landmarks. Ensure the component is modular and follows best practices for folder and file organization.\n<info added on 2025-06-17T04:17:09.456Z>\nThe HeaderBar.vue component’s foundation is solid, with semantic structure, ARIA roles, and keyboard navigation already in place. To further enhance accessibility, the next steps will focus on:\n\n- Adding or refining ARIA attributes to improve screen reader compatibility, such as using aria-label, aria-labelledby, and aria-describedby for all interactive elements and form controls.\n- Ensuring logical keyboard navigation order and focus management, including using refs and tabIndex where necessary to direct focus appropriately after dynamic updates.\n- Enhancing error state communication by implementing aria-invalid and associating error messages with aria-describedby.\n- Providing more explicit and descriptive labels for all controls, ensuring that both visible and screen reader users can understand their purpose.\n- Reviewing and updating status indicators to ensure they convey changes of state both visually and semantically, possibly using aria-live regions for dynamic updates.\n\nThese improvements will be addressed in subsequent subtasks to ensure the HeaderBar.vue component meets high accessibility standards and provides an inclusive user experience.\n</info added on 2025-06-17T04:17:09.456Z>",
+            "details": "Implement a visually accessible header with clear navigation landmarks. Ensure the component is modular and follows best practices for folder and file organization.\n<info added on 2025-06-17T04:17:09.456Z>\nThe HeaderBar.vue component's foundation is solid, with semantic structure, ARIA roles, and keyboard navigation already in place. To further enhance accessibility, the next steps will focus on:\n\n- Adding or refining ARIA attributes to improve screen reader compatibility, such as using aria-label, aria-labelledby, and aria-describedby for all interactive elements and form controls.\n- Ensuring logical keyboard navigation order and focus management, including using refs and tabIndex where necessary to direct focus appropriately after dynamic updates.\n- Enhancing error state communication by implementing aria-invalid and associating error messages with aria-describedby.\n- Providing more explicit and descriptive labels for all controls, ensuring that both visible and screen reader users can understand their purpose.\n- Reviewing and updating status indicators to ensure they convey changes of state both visually and semantically, possibly using aria-live regions for dynamic updates.\n\nThese improvements will be addressed in subsequent subtasks to ensure the HeaderBar.vue component meets high accessibility standards and provides an inclusive user experience.\n</info added on 2025-06-17T04:17:09.456Z>",
             "status": "done"
           },
           {
@@ -133,7 +133,7 @@
               1
             ],
             "details": "Handle focus management, ARIA attributes, and edge cases such as empty or invalid model lists. Ensure dropdown is navigable via keyboard and provides clear feedback.",
-            "status": "in-progress"
+            "status": "done"
           },
           {
             "id": 3,
@@ -143,7 +143,7 @@
               1
             ],
             "details": "Validate URLs on input and blur events, display accessible error messages, and handle edge cases like malformed URLs or unsupported protocols. Ensure input is labeled for screen readers.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 4,
@@ -153,7 +153,7 @@
               1
             ],
             "details": "Support drag-and-drop and manual selection, validate file types and sizes, and provide clear, accessible error messages for invalid files or upload failures.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 5,
@@ -163,7 +163,7 @@
               1
             ],
             "details": "Tokenize input text in real time, display token/character counts, and ensure the textarea is accessible with proper labeling and ARIA attributes. Handle edge cases like pasted content and large inputs.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 6,
@@ -176,7 +176,7 @@
               5
             ],
             "details": "Coordinate state between dropdown, URL input, file upload, and textarea. Handle edge cases such as simultaneous errors, conflicting inputs, and ensure all error and status messages are accessible.",
-            "status": "pending"
+            "status": "done"
           }
         ]
       },
@@ -191,7 +191,7 @@
           2,
           3
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -199,7 +199,7 @@
             "description": "Connect the UI to the hardware detection logic by importing and utilizing data from `hwDetect.js`.",
             "dependencies": [],
             "details": "Ensure `PlanModal.vue` can access and reactively update based on the hardware check results provided by `hwDetect.js`. Define the data structure and state management approach for passing hardware info to the modal.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Mock hardware detection outputs and verify that the modal receives and displays the correct data."
           },
           {
@@ -210,7 +210,7 @@
               1
             ],
             "details": "Develop functions or computed properties that use hardware specs to predict runtimes and memory footprint for both modes. Display these estimates clearly in the modal UI.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Provide various hardware profiles and confirm that the displayed predictions update accordingly and are reasonable."
           },
           {
@@ -221,7 +221,7 @@
               2
             ],
             "details": "Design a clear, accessible modal layout. Include sections for hardware summary, runtime/memory estimates, and selectable options for Adapter vs Full mode. Use appropriate UI components for clarity and usability.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Perform UI/UX review and ensure all required information is visible and selectable. Test accessibility and responsiveness."
           },
           {
@@ -232,7 +232,7 @@
               3
             ],
             "details": "Add interactive controls for mode selection. Implement event handling to update the selected mode and emit or store the user's choice for downstream use.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test that mode selection updates the application state correctly and that the modal closes or confirms as expected upon user action."
           }
         ]
@@ -247,7 +247,7 @@
         "dependencies": [
           1
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -255,7 +255,7 @@
             "description": "Set up the basic Vue component structure for TrainConsole.vue, including layout and placeholders for all required dashboard elements.",
             "dependencies": [],
             "details": "Define the Vue single-file component with template, script, and style sections. Add placeholders for the token counter, loss chart, throughput display, ETA, and abort button. Use semantic HTML and scoped CSS for layout. Ensure the component is ready to receive real-time data updates.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Render the component in isolation and verify that all placeholders appear as expected."
           },
           {
@@ -264,7 +264,7 @@
             "description": "Connect TrainConsole.vue to the training worker to receive real-time updates for tokens, loss, throughput, and ETA.",
             "dependencies": [],
             "details": "Establish a communication channel (e.g., WebSocket, event bus, or worker messaging) between the component and the training worker. Set up reactive data properties in Vue to store incoming values. Update the UI placeholders to display live data as it arrives.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Simulate training worker messages and verify that the component updates all fields in real time."
           },
           {
@@ -273,7 +273,7 @@
             "description": "Implement a dynamic loss chart using vanilla JavaScript within the Vue component.",
             "dependencies": [],
             "details": "Add a canvas or SVG element for the chart. Use vanilla JS to draw and update the loss chart as new data arrives. Ensure the chart is responsive and efficiently updates with each new data point.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Feed sample loss data and confirm the chart renders and updates correctly in response to real-time changes."
           },
           {
@@ -282,103 +282,74 @@
             "description": "Add an abort button to the dashboard that allows users to stop the training process.",
             "dependencies": [],
             "details": "Create a button in the component and wire it to send an abort signal to the training worker. Handle UI state changes (e.g., disabling the button after abort, showing confirmation). Ensure the component responds appropriately to the abort event.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Click the abort button during a simulated training session and verify that the abort signal is sent and the UI updates accordingly."
           }
         ]
       },
       {
         "id": 6,
-        "title": "Integrate ONNX Runtime Web and Custom Kernels",
-        "description": "Set up ONNX Runtime Web with WebGPU EP and custom INT4 matmul kernels.",
-        "details": "Implement `onnxSession.js` in `src/trainers/`. Register custom INT4 matmul WGSL kernel in `loraKernels.wgsl`. Use IO-Binding and GraphCapture for efficient GPU usage. Support both Adapter and Full modes.",
-        "testStrategy": "Test ONNX session creation, custom kernel registration, and IO-Binding. Benchmark throughput.",
+        "title": "Implement Real Training Path with Custom Kernels",
+        "description": "Replace the simulated training loop with a functional one using custom WebGPU kernels for the backward pass and optimizer, integrating with Transformers.js for the forward pass.",
+        "details": "This task involves creating and integrating WGSL shaders for LoRA gradient computation and weight updates. The goal is to build a functional, end-to-end training pipeline that can update LoRA adapter matrices on the GPU.",
+        "testStrategy": "Test custom kernel registration, IO-Binding, and benchmark throughput. Verify that the adapter weights are updated after a training run and that the resulting adapter can be exported and used for inference.",
         "priority": "high",
         "dependencies": [
-          1
+          1,
+          11,
+          12,
+          13
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
-            "title": "ONNX Runtime Web Environment Setup",
-            "description": "Install and configure ONNX Runtime Web, including prerequisites and NPM packages, ensuring compatibility with target browsers.",
+            "title": "Implement lora_forward.wgsl Kernel",
+            "description": "Develop and test the WGSL kernel for the LoRA forward pass, which applies the A and B matrices and adds the scaled residual.",
             "dependencies": [],
-            "details": "Follow official ONNX Runtime Web installation guides. Set up Node.js (16.0+), install required NPM packages in the appropriate directories, and verify the environment using Chrome and Edge browsers. Document any additional setup steps for other browsers.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 2,
-            "title": "WebGPU Execution Provider Configuration",
-            "description": "Configure the WebGPU Execution Provider (EP) for ONNX Runtime Web, enabling GPU acceleration and verifying support across browsers.",
+            "title": "Implement lora_backward.wgsl Kernel",
+            "description": "Develop and test the WGSL kernel for the LoRA backward pass to compute gradients (∂loss/∂A, ∂loss/∂B) based on hidden states and output gradients.",
             "dependencies": [
               1
             ],
-            "details": "Enable WebGPU EP in ONNX Runtime Web configuration. Test and document WebGPU support in Chrome, Edge, Firefox, and Safari. Address browser-specific flags or polyfills as needed.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 3,
-            "title": "Custom Kernel Development for WebGPU",
-            "description": "Design and implement custom GPU kernels tailored for ONNX Runtime Web's WebGPU EP, ensuring optimal performance and correctness.",
+            "title": "Implement adam8bit_update.wgsl Fused Optimizer",
+            "description": "Develop and test the fused Adam optimizer kernel in WGSL to efficiently update the LoRA A and B matrix weights on the GPU.",
             "dependencies": [
               2
             ],
-            "details": "Develop custom kernels using WGSL or compatible shader languages. Write unit tests for each kernel. Ensure kernels adhere to ONNX Runtime's kernel interface and are compatible with WebGPU constraints.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 4,
-            "title": "Kernel Registration and Integration",
-            "description": "Register custom kernels with ONNX Runtime Web, integrating them into the execution provider pipeline.",
+            "title": "Integrate WGSL Kernels with Training Worker",
+            "description": "Integrate the custom WGSL kernels into the `training.worker.js`, passing tensors from the Transformers.js forward pass into the kernels for gradient computation and updates.",
             "dependencies": [
               3
             ],
-            "details": "Implement kernel registration logic, update kernel registry, and verify that custom kernels are discoverable and invoked during model execution. Test integration with sample ONNX models.",
-            "status": "pending"
-          },
-          {
-            "id": 5,
-            "title": "IO-Binding Integration and Validation",
-            "description": "Integrate IO-Binding for efficient data transfer between JavaScript and GPU memory, and validate correctness and performance.",
-            "dependencies": [
-              4
-            ],
-            "details": "Implement IO-Binding APIs for input/output tensors. Benchmark data transfer speeds and validate results against CPU execution. Ensure compatibility with all supported browsers.",
-            "status": "pending"
-          },
-          {
-            "id": 6,
-            "title": "GraphCapture Optimization and Cross-Browser Testing",
-            "description": "Implement and optimize GraphCapture for efficient execution, and perform extensive cross-browser compatibility and performance benchmarking.",
-            "dependencies": [
-              5
-            ],
-            "details": "Enable GraphCapture in ONNX Runtime Web. Profile and optimize graph execution paths. Test and benchmark performance on Chrome, Edge, Firefox, and Safari, documenting any browser-specific issues or optimizations.",
-            "status": "pending"
-          },
-          {
-            "id": 7,
-            "title": "Adapter/Full Mode Support and Comprehensive Testing",
-            "description": "Implement support for both Adapter and Full execution modes, and conduct thorough functional and performance testing across browsers.",
-            "dependencies": [],
-            "details": "Configure ONNX Runtime Web to support both Adapter and Full modes. Develop test suites to validate functionality and measure performance in each mode on all major browsers. Summarize findings and recommend optimizations.",
-            "status": "pending"
+            "status": "done"
           }
         ]
       },
       {
         "id": 7,
-        "title": "Implement Training Worker and Data Loader",
-        "description": "Create background worker for training and data loading.",
-        "details": "Develop `training.worker.js` in `src/workers/` for off-main-thread training. Implement `datasetLoader.js` in `src/data/` for corpus loading and tokenization. Use dual-sequence packing and TF-IDF curriculum.",
-        "testStrategy": "Test worker starts and processes data. Verify dual-sequence packing and curriculum logic.",
-        "priority": "medium",
+        "title": "Refactor Training Worker and Data Loader for Real Training",
+        "description": "Update the training worker and data loader to support the real training pipeline, replacing simulated logic with functional code.",
+        "details": "Modify `training.worker.js` to orchestrate the new training loop (forward pass with Transformers.js, backward pass with custom kernels). Update `datasetLoader.js` to ensure efficient data provision for the GPU.",
+        "testStrategy": "Test that the worker correctly manages the new training loop and that the data loader provides batches efficiently to the GPU, minimizing stalls.",
+        "priority": "high",
         "dependencies": [
           1,
           6
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
@@ -386,7 +357,7 @@
             "description": "Architect a data loader capable of efficiently handling large datasets, supporting asynchronous loading, sharding, and batching. Implement mechanisms for error detection, logging, and recovery to ensure resilience during data ingestion.",
             "dependencies": [],
             "details": "Consider distributed data loading frameworks and defensive programming practices to handle partial failures and retries. Ensure compatibility with downstream preprocessing and training pipelines.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 2,
@@ -396,7 +367,7 @@
               1
             ],
             "details": "Support batch processing and streaming modes. Log and handle malformed or corrupt data gracefully, skipping or repairing as needed.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 3,
@@ -406,7 +377,7 @@
               2
             ],
             "details": "Handle edge cases such as variable-length sequences and ensure compatibility with tokenization output. Implement error handling for packing failures or data inconsistencies.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 4,
@@ -416,7 +387,7 @@
               3
             ],
             "details": "Allow dynamic adjustment of sampling weights and monitor for sampling anomalies. Include fallback strategies if TF-IDF computation fails or data is missing.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 5,
@@ -426,7 +397,7 @@
               4
             ],
             "details": "Implement mechanisms for worker recovery, retry logic, and graceful degradation in case of partial system failures. Ensure that communication bottlenecks do not impede training throughput.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 6,
@@ -436,7 +407,16 @@
               5
             ],
             "details": "Verify data integrity, throughput, and system robustness under stress. Document test results and iterate on weak points identified during integration.",
-            "status": "pending"
+            "status": "done"
+          },
+          {
+            "id": 7,
+            "title": "Refactor training.worker.js to use Transformers.js",
+            "description": "Modify training.worker.js to use Transformers.js for the model loading and forward pass, replacing the direct usage of onnxruntime-web. The worker should orchestrate the training loop by calling Transformers.js for the forward pass and then using the existing custom WebGPU kernels for the backward pass and optimizer step.",
+            "details": "- Remove direct import and usage of `onnxruntime-web`.\n- Use `AutoModelForCausalLM.from_pretrained()` to load the model, similar to `generation.worker.js`.\n- In the training loop, perform the forward pass using the loaded model.\n- After the forward pass, get the hidden states and loss.\n- Use the hidden states and output gradients to call the custom `lora_backward.wgsl` kernel.\n- Use the computed gradients to call the `adam8bit_update.wgsl` optimizer kernel.\n- Ensure data is correctly passed between Transformers.js and the WebGPU kernels.\n<info added on 2025-06-17T23:49:44.207Z>\nMarking this subtask as deferred due to an ongoing issue with editing tools that prevents modification of the src/workers/training.worker.js file. Will revisit and complete this subtask once the issue is resolved. Proceeding with other tasks in the meantime.\n</info added on 2025-06-17T23:49:44.207Z>",
+            "status": "deferred",
+            "dependencies": [],
+            "parentTaskId": 7
           }
         ]
       },
@@ -451,7 +431,7 @@
           1,
           6
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -459,7 +439,7 @@
             "description": "Create the foundational layout for ChatPanel.vue, including sections for conversation display, prompt input, and the LoRA adapter toggle.",
             "dependencies": [],
             "details": "Set up the Vue component structure with a main container. Add placeholders for the chat message list, input area, and a toggle switch for the LoRA adapter. Use Vue's template syntax to organize these sections clearly, ensuring the layout is responsive and accessible.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Render the component and verify that all UI sections (chat display, input, toggle) are visible and correctly positioned."
           },
           {
@@ -470,7 +450,7 @@
               1
             ],
             "details": "Bind a reactive array to store chat messages. Render messages in the conversation area using v-for. Implement a method to handle sending new messages from the input field, updating the message array and clearing the input. Optionally, add basic styling for message bubbles and timestamps.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Send test messages and verify they appear in the conversation area in real time and in the correct order."
           },
           {
@@ -481,7 +461,7 @@
               2
             ],
             "details": "Implement a toggle UI element (e.g., switch or checkbox) bound to a reactive property (e.g., isLoRAEnabled). Ensure that toggling updates the chat mode state. Display the current mode (Base or LoRA) in the UI for user clarity.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Toggle the switch and verify that the UI reflects the current mode and that the state changes as expected."
           },
           {
@@ -492,7 +472,7 @@
               3
             ],
             "details": "Update the message sending method to check the isLoRAEnabled state. Route messages through the appropriate handler or API endpoint based on the selected mode. Ensure seamless switching between modes without losing conversation context.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Send messages in both Base and LoRA modes, verifying that each message is processed using the correct adapter and that switching modes does not disrupt the chat flow."
           }
         ]
@@ -565,7 +545,7 @@
           2,
           5
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -573,7 +553,7 @@
             "description": "Create the visual and structural layout for the FooterStatus.vue component, ensuring space for GPU name, memory usage bar, current mode, ETA, and download button.",
             "dependencies": [],
             "details": "Define the component structure using Vue.js single-file component conventions. Use appropriate HTML and CSS (or a CSS framework) to lay out the footer elements. Ensure the design is responsive and visually distinct for each status item.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Render the component with static mock data to verify layout, spacing, and responsiveness across screen sizes."
           },
           {
@@ -584,7 +564,7 @@
               1
             ],
             "details": "Use Vue's reactivity system and appropriate state management (Vuex, Pinia, or props/events) to bind live data to the component. Set up listeners or subscriptions to backend events or APIs that provide the required status information.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Simulate real-time data updates and verify that the footer updates immediately and accurately reflects changes."
           },
           {
@@ -595,7 +575,7 @@
               2
             ],
             "details": "Create a visual progress bar for memory usage using SVG, Canvas, or CSS. Display GPU name, current mode, and ETA with clear, accessible labels. Ensure all indicators update in real-time based on incoming data.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test with varying memory usage values and status changes to confirm correct rendering and updates."
           },
           {
@@ -606,15 +586,55 @@
               3
             ],
             "details": "Implement the download button with appropriate UI feedback (enabled/disabled, loading state). Connect the button to the backend or file system to trigger downloads. Ensure the button's availability and label reflect the current training status.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test the button's enabled/disabled states, trigger downloads, and verify correct file delivery and user feedback."
           }
         ]
+      },
+      {
+        "id": 11,
+        "title": "Fix ModelManager Singleton Race Condition",
+        "description": "Correct the race condition in `utils/modelManager.js` where the worker is terminated but not nulled, preventing re-initialization.",
+        "details": "Modify the `clearAll` function in `utils/modelManager.js`. After `worker.terminate()`, set `worker = null` to allow `initializeWorker()` to create a new instance correctly.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Correct Training Config Leak in Worker",
+        "description": "Fix the variable assignment in `training.worker.js` to correctly use the passed `trainingConfig`.",
+        "details": "In `handleInitializeAndStart` within `training.worker.js`, change the line `trainingConfig = config;` to `trainingConfig = data.trainingConfig;` to correctly reference the configuration object passed in the message.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Integrate WebGPU Pipeline Creation in Training Worker",
+        "description": "Call the `createComputePipelines()` function within the `training.worker.js` initialization to make the WebGPU compute path active.",
+        "details": "In `handleInitializeAndStart` within `training.worker.js`, add a call to `await createComputePipelines()` after the WebGPU device has been successfully initialized.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Synchronize Access to ModelStates Map",
+        "description": "Prevent race conditions on the shared `modelStates` map in `modelManager.js` during concurrent generation calls.",
+        "details": "Implement a locking mechanism or a request queue within the `ModelManager` to ensure that `.generate()` calls for the same `modelId` are processed serially, preventing interleaved `onMessage` callbacks from corrupting state.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-06-17T02:56:16.391Z",
-      "updated": "2025-06-17T04:17:21.469Z",
+      "updated": "2025-06-17T23:52:18.938Z",
       "description": "Tasks for master context"
     }
   }

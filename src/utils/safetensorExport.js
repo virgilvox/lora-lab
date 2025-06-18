@@ -3,15 +3,90 @@
  * Handles serialization and deserialization of LoRA adapters in safetensors format
  */
 
-// The safetensors ES module build re-exports its WASM bindings under the default export.
-// Importing named helpers directly fails when Vite bundles for the browser because the
-// generated proxy module does not declare those named exports. Use a namespace import
-// instead and reference helpers via the namespace to maintain compatibility across
-// Node and browser builds.
-import * as safetensors from 'safetensors';
+// Import safetensors - this version only has SafeTensor class for loading
+import { SafeTensor, loadSafeTensor } from 'safetensors';
 
-// Convenience re-exports for existing code.
-const { serialize, deserialize } = safetensors;
+// Since this version of safetensors doesn't have serialize/deserialize functions,
+// we'll implement them ourselves following the safetensors format specification
+
+/**
+ * Serialize tensors to safetensors format
+ * @param {Object} tensors - Object with tensor names as keys and {data, shape, dtype} as values
+ * @returns {Uint8Array} - Serialized safetensors buffer
+ */
+function serialize(tensors) {
+  const metadata = {};
+  const buffers = [];
+  let currentOffset = 0;
+
+  // Build metadata and collect buffers
+  for (const [name, tensor] of Object.entries(tensors)) {
+    const { data, shape, dtype } = tensor;
+    const byteLength = data.byteLength;
+    
+    metadata[name] = {
+      dtype: dtype || 'F32',
+      shape: shape,
+      data_offsets: [currentOffset, currentOffset + byteLength]
+    };
+    
+    buffers.push(new Uint8Array(data.buffer || data));
+    currentOffset += byteLength;
+  }
+
+  // Serialize metadata to JSON
+  const metadataStr = JSON.stringify(metadata);
+  const metadataBytes = new TextEncoder().encode(metadataStr);
+  
+  // Calculate padding to align to 8 bytes
+  const padding = (8 - (metadataBytes.length % 8)) % 8;
+  const paddedMetadataLength = metadataBytes.length + padding;
+  
+  // Create header (8 bytes for metadata length)
+  const headerBuffer = new ArrayBuffer(8);
+  const headerView = new DataView(headerBuffer);
+  headerView.setBigUint64(0, BigInt(paddedMetadataLength), true);
+  
+  // Combine all parts
+  const totalLength = 8 + paddedMetadataLength + currentOffset;
+  const result = new Uint8Array(totalLength);
+  
+  // Copy header
+  result.set(new Uint8Array(headerBuffer), 0);
+  
+  // Copy metadata with padding
+  result.set(metadataBytes, 8);
+  
+  // Copy tensor data
+  let offset = 8 + paddedMetadataLength;
+  for (const buffer of buffers) {
+    result.set(buffer, offset);
+    offset += buffer.length;
+  }
+  
+  return result;
+}
+
+/**
+ * Deserialize safetensors format to tensors
+ * @param {Uint8Array} buffer - Safetensors buffer
+ * @returns {Object} - Object with tensor names as keys and {data, shape, dtype} as values
+ */
+function deserialize(buffer) {
+  const safetensor = new SafeTensor(buffer);
+  const tensors = {};
+  
+  for (const [name, metadata] of safetensor.metadata.entries()) {
+    const data = safetensor.getTensor(name);
+    tensors[name] = {
+      data: data,
+      shape: metadata.shape,
+      dtype: metadata.dtype
+    };
+  }
+  
+  return tensors;
+}
 
 /**
  * Export LoRA adapter to safetensors format
@@ -64,7 +139,7 @@ export async function exportAdapter(adapterData, metadata = {}) {
     };
     
     // Serialize to safetensors format
-    const serialized = serialize(tensors, adapterMetadata);
+    const serialized = serialize(tensors);
     
     console.log('Adapter exported successfully:', {
       tensorCount: Object.keys(tensors).length,
@@ -90,10 +165,10 @@ export async function importAdapter(data) {
     console.log('Importing LoRA adapter from safetensors format...');
     
     // Deserialize safetensors data
-    const { tensors, metadata } = deserialize(data);
+    const tensors = deserialize(data);
     
     // Validate format
-    if (!metadata || metadata.adapter_type !== 'lora') {
+    if (!tensors || tensors.adapter_type !== 'lora') {
       throw new Error('Invalid adapter format: not a LoRA adapter');
     }
     
@@ -138,19 +213,19 @@ export async function importAdapter(data) {
     );
     
     const adapterData = {
-      rank: metadata.rank || 4,
-      alpha: metadata.alpha || 8,
-      scaling: metadata.scaling || (metadata.alpha / metadata.rank),
+      rank: tensors.rank || 4,
+      alpha: tensors.alpha || 8,
+      scaling: tensors.scaling || (tensors.alpha / tensors.rank),
       layers,
       totalParams,
-      targetModules: metadata.target_modules || [],
+      targetModules: tensors.target_modules || [],
       metadata: {
-        formatVersion: metadata.format_version,
-        loraLabVersion: metadata.lora_lab_version,
-        createdAt: metadata.created_at,
-        modelName: metadata.model_name,
-        trainingSteps: metadata.training_steps,
-        finalLoss: metadata.final_loss,
+        formatVersion: tensors.format_version,
+        loraLabVersion: tensors.lora_lab_version,
+        createdAt: tensors.created_at,
+        modelName: tensors.model_name,
+        trainingSteps: tensors.training_steps,
+        finalLoss: tensors.final_loss,
         importedAt: new Date().toISOString()
       }
     };
@@ -236,21 +311,21 @@ export async function validateAdapterFile(fileData) {
     }
     
     // Try to deserialize
-    const { tensors, metadata } = deserialize(data);
+    const tensors = deserialize(data);
     
     // Validate metadata
-    if (!metadata) {
+    if (!tensors) {
       validation.errors.push('No metadata found in safetensors file');
       return validation;
     }
     
-    if (metadata.adapter_type !== 'lora') {
-      validation.errors.push(`Unsupported adapter type: ${metadata.adapter_type}`);
+    if (tensors.adapter_type !== 'lora') {
+      validation.errors.push(`Unsupported adapter type: ${tensors.adapter_type}`);
       return validation;
     }
     
     // Check format version compatibility
-    const formatVersion = metadata.format_version || '1.0';
+    const formatVersion = tensors.format_version || '1.0';
     if (formatVersion !== '1.0') {
       validation.warnings.push(`Format version ${formatVersion} may not be fully compatible`);
     }
@@ -292,13 +367,13 @@ export async function validateAdapterFile(fileData) {
     );
     
     validation.isValid = validation.errors.length === 0;
-    validation.metadata = metadata;
+    validation.metadata = tensors;
     validation.tensorInfo = {
       totalTensors,
       totalParams,
       layerCount: Object.keys(loraLayers).length,
-      rank: metadata.rank,
-      alpha: metadata.alpha
+      rank: tensors.rank,
+      alpha: tensors.alpha
     };
     
     if (validation.isValid) {

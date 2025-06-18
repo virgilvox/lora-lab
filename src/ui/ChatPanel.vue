@@ -28,12 +28,22 @@
         
         <div v-if="!adapterLoaded" class="lora-status">
           <span class="status-text">{{ isTraining ? 'Training...' : 'No adapter available' }}</span>
+          <button @click="triggerAdapterUpload" class="upload-adapter-btn" :disabled="isTraining">Upload</button>
         </div>
         <div v-else class="lora-status active">
           <span class="status-text">Adapter ready</span>
         </div>
       </div>
     </div>
+
+    <!-- Hidden file input for adapter upload -->
+    <input 
+      type="file" 
+      ref="adapterInput" 
+      style="display: none" 
+      accept=".safetensors"
+      @change="handleAdapterUpload"
+    />
 
     <!-- Chat Messages -->
     <div class="chat-messages" ref="messagesContainer">
@@ -48,7 +58,7 @@
               :key="suggestion"
               @click="sendSuggestion(suggestion)"
               class="suggestion-chip"
-              :disabled="!selectedModel"
+              :disabled="!selectedModel || isGenerating"
             >
               {{ suggestion }}
             </button>
@@ -85,7 +95,12 @@
             <button @click="copyMessage(message.content)" class="action-btn" title="Copy">
               📋
             </button>
-            <button @click="regenerateResponse(message, index)" class="action-btn" title="Regenerate">
+            <button 
+              @click="regenerateResponse(message, index)" 
+              class="action-btn" 
+              title="Regenerate"
+              :disabled="isGenerating"
+            >
               🔄
             </button>
             <button @click="rateMessage(message, 'good')" class="action-btn" title="Good response">
@@ -99,7 +114,7 @@
       </div>
 
       <!-- Typing Indicator -->
-      <div v-if="isTyping" class="message assistant">
+      <div v-if="isGenerating" class="message assistant">
         <div class="message-avatar">
           <div class="avatar-icon">🤖</div>
         </div>
@@ -126,16 +141,20 @@
           placeholder="Type your message here..."
           class="message-input"
           rows="1"
-          :disabled="!selectedModel || isTyping"
+          :disabled="!selectedModel || isGenerating"
         ></textarea>
         
         <button 
-          @click="sendMessage"
+          @click="handleSendOrStop"
           class="send-button"
-          :disabled="!canSend"
-          :class="{ 'ready': canSend }"
+          :class="{ 
+            'ready': canSend, 
+            'stop': isGenerating,
+            'disabled': !selectedModel 
+          }"
+          :disabled="!selectedModel"
         >
-          <span class="send-icon">{{ isTyping ? '⏸' : '➤' }}</span>
+          <span class="send-icon">{{ isGenerating ? '⏹' : '➤' }}</span>
         </button>
       </div>
       
@@ -190,13 +209,16 @@ export default {
     messages: {
       type: Array,
       default: () => []
+    },
+    isGenerating: {
+      type: Boolean,
+      default: false
     }
   },
-  emits: ['toggle-lora', 'message-sent', 'message-regenerated', 'message-rated', 'new-message', 'interrupt-generation'],
+  emits: ['toggle-lora', 'message-sent', 'message-regenerated', 'message-rated', 'new-message', 'interrupt-generation', 'adapter-uploaded', 'chat-cleared'],
   data() {
     return {
       inputMessage: '',
-      isTyping: false,
       suggestions: [
         "Hello! How are you?",
         "What can you help me with?",
@@ -217,7 +239,7 @@ export default {
     canSend() {
       return this.inputMessage.trim().length > 0 && 
              this.selectedModel && 
-             !this.isTyping &&
+             !this.isGenerating &&
              this.inputMessage.length <= 2000
     }
   },
@@ -241,12 +263,17 @@ export default {
     }
   },
   methods: {
-    sendMessage() {
-      if (this.isTyping) {
-        // If already generating, emit an interrupt event
+    handleSendOrStop() {
+      if (this.isGenerating) {
+        // Stop generation
         this.$emit('interrupt-generation');
-        return;
+      } else if (this.canSend) {
+        // Send message
+        this.sendMessage();
       }
+    },
+    
+    sendMessage() {
       if (!this.canSend) return
       
       const message = this.inputMessage.trim()
@@ -257,7 +284,7 @@ export default {
     },
     
     sendSuggestion(suggestion) {
-      if (!this.selectedModel) return
+      if (!this.selectedModel || this.isGenerating) return
       
       this.inputMessage = suggestion
       this.sendMessage()
@@ -266,7 +293,11 @@ export default {
     handleKeyDown(event) {
       if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault()
-        this.sendMessage()
+        if (this.isGenerating) {
+          this.$emit('interrupt-generation');
+        } else {
+          this.sendMessage()
+        }
       }
     },
     
@@ -354,6 +385,17 @@ export default {
     formatTime(timestamp) {
       const date = new Date(timestamp)
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    },
+
+    triggerAdapterUpload() {
+      this.$refs.adapterInput.click();
+    },
+
+    handleAdapterUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        this.$emit('adapter-uploaded', file);
+      }
     }
   }
 }
@@ -486,6 +528,25 @@ export default {
 .lora-status {
   font-size: 0.8rem;
   color: #666;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.upload-adapter-btn {
+    background: none;
+    border: 1px solid #666;
+    color: #ccc;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.upload-adapter-btn:hover:not(:disabled) {
+    background-color: #333;
+    border-color: #888;
 }
 
 .lora-status.active {
@@ -775,6 +836,16 @@ export default {
 
 .send-button.ready:hover:not(:disabled) {
   background-color: #059669;
+}
+
+.send-button.stop {
+  background-color: #ef4444;
+  border-color: #ef4444;
+  color: #fff;
+}
+
+.send-button.stop:hover:not(:disabled) {
+  background-color: #dc2626;
 }
 
 .send-button:disabled {

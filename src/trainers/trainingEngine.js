@@ -56,22 +56,7 @@ export class TrainingEngine {
       
       // Send all necessary info to the worker to initialize and start
       // Make a serializable copy of the config, removing non-serializable objects
-      const serializableConfig = {
-        modelSource: config.modelSource,
-        dataset: {
-          text: config.dataset.text,
-          tokenCount: config.dataset.tokenCount,
-          characterCount: config.dataset.characterCount
-        },
-        trainingConfig: {
-          ...config.trainingConfig,
-          // Convert any complex objects to simpler formats if needed
-        },
-        hardwareInfo: {
-          webGPUSupported: config.hardwareInfo.webGPUSupported,
-          estimatedTFLOPs: config.hardwareInfo.estimatedTFLOPs
-        }
-      };
+      const serializableConfig = JSON.parse(JSON.stringify(config));
       
       this.trainingWorker.postMessage({
         type: 'INITIALIZE_AND_START',

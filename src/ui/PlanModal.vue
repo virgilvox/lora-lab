@@ -187,7 +187,7 @@
           :disabled="!selectedMode || !isModeValid"
           :class="{ 'ready': selectedMode && isModeValid }"
         >
-          Start {{ selectedMode === 'adapter' ? 'Adapter' : 'Full-Tune' }} Training
+          Confirm Plan
         </button>
       </div>
     </div>
@@ -258,7 +258,7 @@ export default {
       const memoryRequired = 2.0 + (tflops * 0.1); // Base model + adapter overhead
       const gflopsPerToken = rank === 4 ? 1.2 : 0.6; // Adapter computational cost
       const throughput = Math.floor((tflops * 1000) / gflopsPerToken * 0.4); // 40% efficiency
-      const etaMinutes = Math.ceil(tokens / throughput / 60);
+      const etaMinutes = Math.ceil(tokens / Math.max(throughput, 1) / 60);
 
       const warnings = [];
       let feasible = true;

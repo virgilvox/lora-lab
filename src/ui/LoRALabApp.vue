@@ -27,9 +27,13 @@
           :isTraining="isTraining"
           :adapterLoaded="adapterLoaded"
           :messages="chatHistory"
+          :isGenerating="isGenerating"
           @toggle-lora="useLoRA = !useLoRA"
           @message-sent="handleChatMessage"
+          @message-regenerated="handleRegenerateMessage"
+          @message-rated="handleMessageRated"
           @interrupt-generation="handleInterruptGeneration"
+          @adapter-uploaded="handleAdapterUploaded"
           @chat-cleared="chatHistory = []"
         />
       </div>
@@ -41,7 +45,7 @@
           :hardwareInfo="hardwareInfo"
           :isTraining="isTraining"
           ref="trainConsole"
-          @start-training="handleTrainingStarted"
+          @start-training="handleTrainingRequest"
           @pause-training="handleTrainingPaused"
           @resume-training="handleTrainingResumed"
           @stop-training="handleTrainingStopped"
@@ -189,8 +193,9 @@ import TrainConsole from './TrainConsole.vue'
 import FooterStatus from './FooterStatus.vue'
 import PlanModal from './PlanModal.vue'
 import { detectHardware } from '../utils/hwDetect.js'
-import { loadDataset, tokenizeText } from '../data/datasetLoader.js'
+import { loadDataset } from '../data/datasetLoader.js'
 import { modelManager, RecommendedModels } from '../utils/modelManager.js'
+import { downloadAdapter, importAdapter, validateAdapterFile } from '../utils/safetensorExport.js'
 import { AutoTokenizer } from '@huggingface/transformers'
 import { trainingEngine } from '../trainers/trainingEngine.js'
 
@@ -252,10 +257,10 @@ export default {
       useLoRA: false,
       adapterLoaded: false,
       adapterReady: false,
+      loadedAdapterData: null,
 
       // Chat State
       chatHistory: [],
-      isTyping: false,
 
       // HF Token Modal
       showTokenModal: false,
@@ -265,7 +270,10 @@ export default {
 
       // Training Simulation
       trainingInterval: null,
-      memoryMonitoringInterval: null
+      memoryMonitoringInterval: null,
+
+      // New props
+      isGenerating: false
     }
   },
   computed: {
@@ -433,6 +441,10 @@ export default {
           isTraining: false, 
           isPaused: false 
         };
+        // Automatically trigger download
+        if (data.adapterData) {
+          this.handleDownloadAdapter(data.adapterData);
+        }
       });
       
       trainingEngine.on('error', (errorData) => {
@@ -694,19 +706,17 @@ export default {
         dataset: this.corpusInfo,
         trainingConfig: {
           ...this.trainingConfig.config, // Base config from PlanModal
-          mode: this.selectedTrainingMode
+          mode: this.selectedTrainingMode,
+          // Nest adapter specific config
+          adapterConfig: {
+            ...this.trainingConfig.config
+          }
         },
         hardwareInfo: this.hardwareInfo,
       };
 
       // Start training via the engine
       trainingEngine.startTraining(fullTrainingConfig);
-    },
-
-    // Add missing handleTrainingStarted method
-    handleTrainingStarted(data) {
-      console.log('Training started:', data);
-      // Already handled by the trainingEngine events in setupTrainingEngineListeners
     },
 
     // Training Event Handlers
@@ -810,22 +820,58 @@ export default {
     },
 
     // Adapter Management
-    handleDownloadAdapter() {
-      if (!this.adapterReady) {
-        alert('No adapter ready for download')
-        return
+    async handleAdapterUploaded(file) {
+      if (!file) return;
+
+      this.isLoading = true;
+      this.loadingMessage = 'Loading Adapter...';
+      this.loadingDetails = `Validating ${file.name}...`;
+
+      try {
+        const validation = await validateAdapterFile(file);
+        if (!validation.isValid) {
+          throw new Error(`Invalid adapter file: ${validation.errors.join(', ')}`);
+        }
+
+        this.loadingDetails = 'Deserializing adapter weights...';
+        const data = new Uint8Array(await file.arrayBuffer());
+        const adapterData = await importAdapter(data);
+
+        this.loadedAdapterData = adapterData;
+        this.adapterLoaded = true;
+        this.adapterReady = true; // Mark as ready to use
+
+        // Send adapter data to the generation worker
+        modelManager.loadAdapter(this.selectedModel.modelId, this.loadedAdapterData);
+
+        this.loadingDetails = 'Adapter loaded successfully!';
+        setTimeout(() => { this.isLoading = false; }, 1000);
+
+      } catch (error) {
+        console.error('Failed to load adapter:', error);
+        alert(`Error loading adapter: ${error.message}`);
+        this.isLoading = false;
+      }
+    },
+
+    async handleDownloadAdapter(adapterData) {
+      if (!this.adapterReady || !adapterData) {
+        alert('No adapter ready for download');
+        return;
       }
 
-      // Simulate adapter download
-      const blob = new Blob(['// LoRA Adapter weights (simulated)'], { type: 'application/octet-stream' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `lora-adapter-${this.selectedModel?.id || 'model'}-${Date.now()}.safetensors`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      try {
+        const modelName = this.selectedModel?.id || 'custom-model';
+        const filename = `lora-adapter-${modelName}-${Date.now()}.safetensors`;
+        await downloadAdapter(adapterData, filename, {
+          modelName: this.selectedModel?.modelId || 'unknown',
+          trainingSteps: this.trainingStatus.totalSteps,
+          finalLoss: this.trainingStatus.currentLoss
+        });
+      } catch (error) {
+        console.error('Failed to download adapter:', error);
+        alert('Error preparing adapter for download. Check console for details.');
+      }
     },
 
     // Chat Management
@@ -836,7 +882,7 @@ export default {
         timestamp: Date.now()
       })
 
-      this.isTyping = true
+      this.isGenerating = true
 
       try {
         if (!this.selectedModel || !modelManager.isModelLoaded(this.selectedModel.modelId)) {
@@ -855,6 +901,7 @@ export default {
           this.selectedModel.modelId,
           message,
           {
+            useLoRA: this.useLoRA,
             onToken: (token) => {
               // In Vue 3, directly updating the property should trigger reactivity
               assistantMessage.content += token;
@@ -878,14 +925,29 @@ export default {
           };
         }
       } finally {
-        this.isTyping = false;
+        this.isGenerating = false;
       }
+    },
+
+    async handleRegenerateMessage(userMessage, messageIndex) {
+      // Remove the previous assistant message
+      if (messageIndex < this.chatHistory.length) {
+        this.chatHistory.splice(messageIndex, 1);
+      }
+      
+      // Regenerate response
+      await this.handleChatMessage(userMessage);
+    },
+
+    handleMessageRated(ratingData) {
+      console.log('Message rated:', ratingData);
+      // Could store this feedback for future training or analysis
     },
 
     handleInterruptGeneration() {
       if (this.selectedModel && this.selectedModel.modelId) {
         modelManager.interrupt(this.selectedModel.modelId);
-        this.isTyping = false;
+        this.isGenerating = false;
         const loadingIndex = this.chatHistory.findIndex(msg => msg.isLoading);
         if (loadingIndex !== -1) {
           this.chatHistory[loadingIndex].content += ' [Interrupted]';

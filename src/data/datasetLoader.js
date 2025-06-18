@@ -1,6 +1,6 @@
 /**
- * Dataset Loader and Tokenization Utility for LoRA Lab
- * Handles text corpus loading, processing, and tokenization
+ * Dataset Loader and Processing Utility for LoRA Lab
+ * Handles text corpus loading and cleaning. Tokenization is handled by the training worker.
  */
 
 /**
@@ -11,10 +11,6 @@
  */
 export async function loadDataset(text, options = {}) {
   const {
-    maxTokens = 1000000,
-    sequenceLength = 512,
-    stride = 256,
-    includeSpecialTokens = true,
     cleanText = true
   } = options
 
@@ -22,28 +18,14 @@ export async function loadDataset(text, options = {}) {
     // Clean and preprocess text
     const processedText = cleanText ? preprocessText(text) : text
     
-    // Basic tokenization (simplified for demo - in real implementation would use proper tokenizer)
-    const tokens = await tokenizeText(processedText, { includeSpecialTokens })
-    
-    // Create training sequences
-    const sequences = createTrainingSequences(tokens, sequenceLength, stride)
-    
-    // Calculate dataset statistics
-    const stats = calculateDatasetStats(processedText, tokens, sequences)
+    // Calculate dataset statistics based on raw text
+    const stats = calculateDatasetStats(processedText)
     
     return {
-      originalText: text,
-      processedText: processedText,
-      tokens: tokens.slice(0, maxTokens), // Limit tokens if needed
-      sequences: sequences,
-      tokenCount: Math.min(tokens.length, maxTokens),
-      sequenceCount: sequences.length,
+      text: processedText,
       characterCount: processedText.length,
-      averageTokenLength: processedText.length / tokens.length,
       stats: stats,
       metadata: {
-        sequenceLength,
-        stride,
         timestamp: Date.now(),
         options
       }
@@ -88,120 +70,11 @@ export function preprocessText(text) {
 }
 
 /**
- * Simple tokenization (basic implementation for demo)
- * In production, this would use a proper tokenizer like tiktoken
- * @param {string} text - Text to tokenize
- * @param {Object} options - Tokenization options
- * @returns {Promise<Array>} Array of token IDs
- */
-export async function tokenizeText(text, options = {}) {
-  const { includeSpecialTokens = true } = options
-
-  // This is a simplified tokenizer for demo purposes
-  // In a real implementation, you'd use a proper tokenizer that matches your model
-  
-  // Basic word + subword tokenization
-  const tokens = []
-  
-  if (includeSpecialTokens) {
-    tokens.push(1) // BOS token
-  }
-  
-  // Split text into words and punctuation
-  const words = text.match(/\S+|\s+/g) || []
-  
-  for (const word of words) {
-    if (/^\s+$/.test(word)) {
-      // Whitespace token
-      tokens.push(220) // Space token ID
-    } else {
-      // Convert word to token IDs (simplified approach)
-      const wordTokens = wordToTokens(word)
-      tokens.push(...wordTokens)
-    }
-  }
-  
-  if (includeSpecialTokens) {
-    tokens.push(2) // EOS token
-  }
-  
-  return tokens
-}
-
-/**
- * Convert a word to token IDs (simplified implementation)
- * @param {string} word - Word to tokenize
- * @returns {Array} Token IDs
- */
-function wordToTokens(word) {
-  // This is a very simplified approach
-  // Real tokenizers use BPE, SentencePiece, or other algorithms
-  
-  const tokens = []
-  const lowerWord = word.toLowerCase()
-  
-  // Simple hash-based approach for consistent token assignment
-  let hash = 0
-  for (let i = 0; i < lowerWord.length; i++) {
-    const char = lowerWord.charCodeAt(i)
-    hash = ((hash << 5) - hash) + char
-    hash = hash & hash // Convert to 32-bit integer
-  }
-  
-  // Map to vocabulary range (3-50000, avoiding special tokens)
-  const tokenId = 3 + Math.abs(hash) % 49997
-  tokens.push(tokenId)
-  
-  // For longer words, might split into multiple tokens
-  if (word.length > 8) {
-    const midpoint = Math.floor(word.length / 2)
-    const secondPart = word.slice(midpoint)
-    let secondHash = 0
-    for (let i = 0; i < secondPart.length; i++) {
-      const char = secondPart.charCodeAt(i)
-      secondHash = ((secondHash << 5) - secondHash) + char
-      secondHash = secondHash & secondHash
-    }
-    const secondTokenId = 3 + Math.abs(secondHash) % 49997
-    tokens.push(secondTokenId)
-  }
-  
-  return tokens
-}
-
-/**
- * Create training sequences from tokens
- * @param {Array} tokens - Array of token IDs
- * @param {number} sequenceLength - Length of each sequence
- * @param {number} stride - Stride between sequences
- * @returns {Array} Array of sequences
- */
-export function createTrainingSequences(tokens, sequenceLength = 512, stride = 256) {
-  const sequences = []
-  
-  for (let i = 0; i < tokens.length - sequenceLength; i += stride) {
-    const sequence = tokens.slice(i, i + sequenceLength)
-    const labels = tokens.slice(i + 1, i + sequenceLength + 1) // Next token prediction
-    
-    sequences.push({
-      input: sequence,
-      labels: labels,
-      startIndex: i,
-      endIndex: i + sequenceLength
-    })
-  }
-  
-  return sequences
-}
-
-/**
  * Calculate dataset statistics
  * @param {string} text - Processed text
- * @param {Array} tokens - Token array
- * @param {Array} sequences - Training sequences
  * @returns {Object} Dataset statistics
  */
-function calculateDatasetStats(text, tokens, sequences) {
+function calculateDatasetStats(text) {
   // Character frequency analysis
   const charFreq = {}
   for (const char of text) {
@@ -212,20 +85,10 @@ function calculateDatasetStats(text, tokens, sequences) {
   const words = text.match(/\b\w+\b/g) || []
   const uniqueWords = new Set(words.map(w => w.toLowerCase()))
   
-  // Token vocabulary analysis
-  const uniqueTokens = new Set(tokens)
-  
   return {
     characterCount: text.length,
     wordCount: words.length,
     uniqueWordCount: uniqueWords.size,
-    tokenCount: tokens.length,
-    uniqueTokenCount: uniqueTokens.size,
-    sequenceCount: sequences.length,
-    averageWordsPerSequence: sequences.length > 0 ? words.length / sequences.length : 0,
-    averageTokensPerWord: words.length > 0 ? tokens.length / words.length : 0,
-    vocabularySize: uniqueTokens.size,
-    compressionRatio: text.length / tokens.length, // Characters per token
     mostCommonChars: Object.entries(charFreq)
       .sort(([,a], [,b]) => b - a)
       .slice(0, 10)
@@ -349,8 +212,6 @@ function formatTrainingTime(seconds) {
 export default {
   loadDataset,
   preprocessText,
-  tokenizeText,
-  createTrainingSequences,
   validateCorpus,
   estimateTrainingTime
 }

@@ -88,7 +88,9 @@ export class ModelManager {
         isLoaded: false,
         onProgress: options.onProgress,
         resolve,
-        reject
+        reject,
+        requests: [],
+        processing: false,
       });
     });
     
@@ -100,6 +102,22 @@ export class ModelManager {
   }
 
   /**
+   * Sends loaded adapter data to the worker.
+   * @param {string} modelId - The model ID to associate the adapter with.
+   * @param {Object} adapterData - The deserialized adapter data.
+   */
+  loadAdapter(modelId, adapterData) {
+    const state = modelStates.get(modelId);
+    if (!state || state.status !== 'ready') {
+      console.warn('Cannot load adapter for a model that is not ready.');
+      return;
+    }
+    state.adapter = adapterData;
+    worker.postMessage({ type: 'load_adapter', data: { model_id: modelId, adapter: adapterData } });
+    console.log('Adapter data sent to worker for model:', modelId);
+  }
+
+  /**
    * Generates text using a loaded model via the worker.
    * @param {string} modelId - Model ID.
    * @param {string} prompt - Input prompt.
@@ -107,25 +125,48 @@ export class ModelManager {
    * @returns {Promise<string>} A promise that resolves with the final generated text.
    */
   async generate(modelId, prompt, options = {}) {
-     const { onToken } = options;
-     const messages = [{ role: 'user', content: prompt }];
-     
      return new Promise((resolve, reject) => {
-        const callback = (message) => {
-            if (message.status === 'update' && onToken) {
-                onToken(message.output);
-            } else if (message.status === 'complete') {
-                onMessageCallbacks.delete(modelId);
-                resolve(message.output);
-            } else if (message.status === 'error') {
-                onMessageCallbacks.delete(modelId);
-                reject(new Error(message.error));
-            }
-        };
-        onMessageCallbacks.set(modelId, callback);
+        const state = modelStates.get(modelId);
+        if (!state || state.status !== 'ready') {
+            return reject(new Error('Model not ready'));
+        }
 
-        worker.postMessage({ type: 'generate', data: { model_id: modelId, messages } });
+        state.requests.push({ prompt, options, resolve, reject });
+        if (!state.processing) {
+            this.processNextRequest(modelId);
+        }
      });
+  }
+
+  processNextRequest(modelId) {
+    const state = modelStates.get(modelId);
+    if (!state || state.processing || state.requests.length === 0) {
+        return;
+    }
+    state.processing = true;
+
+    const { prompt, options, resolve, reject } = state.requests.shift();
+    const { onToken, useLoRA } = options;
+    const messages = [{ role: 'user', content: prompt }];
+
+    const callback = (message) => {
+        if (message.status === 'update' && onToken) {
+            onToken(message.output);
+        } else if (message.status === 'complete' || message.status === 'interrupted') {
+            onMessageCallbacks.delete(modelId);
+            state.processing = false;
+            resolve(message.output);
+            this.processNextRequest(modelId);
+        } else if (message.status === 'error') {
+            onMessageCallbacks.delete(modelId);
+            state.processing = false;
+            reject(new Error(message.error));
+            this.processNextRequest(modelId);
+        }
+    };
+    onMessageCallbacks.set(modelId, callback);
+
+    worker.postMessage({ type: 'generate', data: { model_id: modelId, messages, useLoRA } });
   }
 
   interrupt(modelId) {
@@ -160,6 +201,7 @@ export class ModelManager {
     // We could also terminate and re-initialize the worker if needed.
     if(worker) {
         worker.terminate();
+        worker = null;
         initializeWorker();
     }
     console.log('All model states cleared and worker reset.');
