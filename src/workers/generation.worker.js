@@ -154,6 +154,13 @@ self.addEventListener("message", async (e) => {
       handleLoad(data.model_id);
       break;
 
+    case "unload":
+      if (models.has(data.model_id)) {
+        models.delete(data.model_id);
+        self.postMessage({ status: 'unloaded', model_id: data.model_id });
+      }
+      break;
+
     case "load_adapter":
       adapters.set(data.model_id, data.adapter);
       self.postMessage({ status: 'adapter_loaded', model_id: data.model_id });

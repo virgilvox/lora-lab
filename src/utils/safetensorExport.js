@@ -255,6 +255,19 @@ export async function downloadAdapter(adapterData, filename = 'lora_adapter.safe
   try {
     const serializedData = await exportAdapter(adapterData, metadata);
     
+    // --- New Validation Step ---
+    const validation = await validateAdapterFile(serializedData);
+    if (!validation.isValid) {
+        console.error("Validation failed:", validation.errors);
+        alert(`Failed to validate the exported adapter: ${validation.errors.join(', ')}`);
+        // Optionally, still allow download if there are only warnings
+        if (validation.errors.length > 0) {
+            const proceed = confirm("Adapter validation failed. Proceed with download anyway?");
+            if (!proceed) return;
+        }
+    }
+    // --- End Validation Step ---
+
     // Create blob and download
     const blob = new Blob([serializedData], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);

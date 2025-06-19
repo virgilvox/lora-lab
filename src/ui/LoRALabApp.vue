@@ -61,6 +61,7 @@
 
     <!-- Footer Status -->
     <FooterStatus 
+      ref="footerStatus"
       :hardwareInfo="hardwareInfo"
       :trainingStatus="trainingStatus"
       :adapterReady="adapterReady"
@@ -275,6 +276,8 @@ export default {
       showTokenModal: false,
       hfToken: '',
       modelToRetry: null,
+      trainedModelId: null, // To store model ID during training
+      trainedAdapterData: null, // To store the trained adapter
       tokenError: '',
 
       // Training Simulation
@@ -388,6 +391,7 @@ export default {
       } catch (error) {
         console.error('Failed to initialize app:', error);
         this.loadingDetails = `Error: ${error.message}`;
+        this.addNotification('error', 'Initialization Failed', error.message);
         this.loadingProgress = 0;
         this.isLoading = false;
         // Continue with degraded functionality
@@ -482,6 +486,7 @@ export default {
         this.trainingCompleted = true;
         this.adapterReady = true;
         this.adapterLoaded = true;
+        this.trainedAdapterData = data.adapterData; // Store the adapter data
         // Update training status instead of computed properties
         this.trainingStatus = { 
           ...this.trainingStatus, 
@@ -491,12 +496,13 @@ export default {
         };
         // Automatically trigger download
         if (data.adapterData) {
-          this.handleDownloadAdapter(data.adapterData);
+          this.handleDownloadAdapter();
         }
       });
       
       trainingEngine.on('error', (errorData) => {
         console.error('Training Engine Error:', errorData);
+        this.addNotification('error', `Training Error: ${errorData.type}`, errorData.error.message);
         // Update training status instead of computed properties
         this.trainingStatus = { 
           ...this.trainingStatus, 
@@ -587,6 +593,7 @@ export default {
       } catch (error) {
         console.error('Model loading failed:', error);
         this.loadingDetails = `Error: ${error.message}`;
+        this.addNotification('error', 'Model Loading Failed', error.message);
         setTimeout(() => {
           this.isLoading = false;
         }, 2000);
@@ -626,6 +633,7 @@ export default {
       } catch (error) {
         console.error('Failed to load model:', error);
         this.loadingDetails = `Error: ${error.message}`;
+        this.addNotification('error', 'Custom Model Failed', error.message);
         setTimeout(() => {
           this.isLoading = false;
         }, 2000);
@@ -719,7 +727,7 @@ export default {
       } catch (error) {
         console.error('Failed to process corpus:', error)
         this.isLoading = false
-        alert('Failed to process corpus')
+        this.addNotification('error', 'Failed to process corpus', error.message)
       }
     },
 
@@ -761,7 +769,7 @@ export default {
       this.showPlanModal = false
     },
 
-    handleTrainingRequest() {
+    async handleTrainingRequest() {
       if (!this.canStartTraining) {
         if (!this.selectedModel) {
           alert('Please select a model first')
@@ -775,9 +783,16 @@ export default {
         return
       }
 
+      // --- MEMORY STRATEGY: Unload inference model ---
+      console.log(`Unloading model ${this.selectedModel.modelId} from inference worker to save memory.`);
+      this.trainedModelId = this.selectedModel.modelId;
+      await modelManager.unloadModel(this.selectedModel.modelId);
+      this.selectedModel = null; // Clear the selected model from the UI
+      // --- END MEMORY STRATEGY ---
+
       // Consolidate all training info into a single config object
       const fullTrainingConfig = {
-        modelSource: this.selectedModel.modelId,
+        modelSource: this.trainedModelId, // Use the stored ID
         dataset: this.corpusInfo,
         trainingConfig: {
           ...this.trainingConfig.config, // Base config from PlanModal
@@ -817,10 +832,30 @@ export default {
       trainingEngine.stopTraining(); // Use stop for abort as well
     },
 
-    handleTrainingCompleted(data) {
+    async handleTrainingCompleted(data) {
       this.adapterReady = true;
       this.adapterLoaded = true;
+      this.trainedAdapterData = data.adapterData; // Store the adapter data
       console.log('Training completed in parent:', data);
+
+      // --- MEMORY STRATEGY: Reload model and apply adapter ---
+      if (this.trainedModelId) {
+          console.log(`Training complete. Reloading model ${this.trainedModelId} for inference...`);
+          this.isLoading = true;
+          this.loadingMessage = `Reloading ${this.trainedModelId}...`;
+          
+          const modelInfo = this.modelOptions.find(m => m.modelId === this.trainedModelId) || { id: this.trainedModelId, name: this.trainedModelId, modelId: this.trainedModelId };
+          await this.handleModelSelected(modelInfo);
+
+          if (data.adapterData) {
+              console.log('Applying newly trained adapter...');
+              this.loadingDetails = 'Applying trained adapter...';
+              await modelManager.loadAdapter(this.trainedModelId, data.adapterData);
+              this.useLoRA = true;
+          }
+          this.isLoading = false;
+      }
+       // --- END MEMORY STRATEGY ---
     },
 
     resetTraining() {
@@ -930,7 +965,7 @@ export default {
 
       } catch (error) {
         console.error('Failed to load adapter:', error);
-        alert(`Error loading adapter: ${error.message}`);
+        this.addNotification('error', 'Adapter Loading Failed', error.message);
         this.isLoading = false;
       }
     },
@@ -951,6 +986,7 @@ export default {
         });
       } catch (error) {
         console.error('Failed to download adapter:', error);
+        this.addNotification('error', 'Adapter Download Failed', error.message);
         alert('Error preparing adapter for download. Check console for details.');
       }
     },
@@ -1005,6 +1041,7 @@ export default {
             isError: true
           };
         }
+        this.addNotification('error', 'Inference Failed', error.message);
       } finally {
         this.isGenerating = false;
       }
@@ -1049,6 +1086,15 @@ export default {
         // Base memory usage when idle
         this.currentMemoryUsage = 1.8 + Math.random() * 0.5
       }
+    },
+
+    addNotification(type, message, details) {
+        if (this.$refs.footerStatus) {
+            this.$refs.footerStatus.addNotification(type, message, details);
+        } else {
+            // Fallback if footer is not mounted yet
+            console.log(`[${type.toUpperCase()}] ${message}: ${details}`);
+        }
     }
   }
 }

@@ -287,13 +287,13 @@ struct AdamParams {
     step: u32,
 }
 
-@group(2) @binding(0) var<uniform> adamParams: AdamParams;
-@group(2) @binding(1) var<storage, read> gradients: array<f32>;
-@group(2) @binding(2) var<storage, read_write> weights: array<f32>;
-@group(2) @binding(3) var<storage, read_write> momentum: array<atomic<u32>>;    // 8-bit packed momentum
-@group(2) @binding(4) var<storage, read_write> velocity: array<atomic<u32>>;    // 8-bit packed velocity
-@group(2) @binding(5) var<storage, read> momentum_scale: array<f32>; // Scaling factor for momentum
-@group(2) @binding(6) var<storage, read> velocity_scale: array<f32>; // Scaling factor for velocity
+@group(7) @binding(0) var<uniform> adamParams: AdamParams;
+@group(7) @binding(1) var<storage, read> gradients: array<f32>;
+@group(7) @binding(2) var<storage, read_write> weights: array<f32>;
+@group(7) @binding(3) var<storage, read_write> momentum: array<atomic<u32>>;    // 8-bit packed momentum
+@group(7) @binding(4) var<storage, read_write> velocity: array<atomic<u32>>;    // 8-bit packed velocity
+@group(7) @binding(5) var<storage, read> momentum_scale: array<f32>; // Scaling factor for momentum
+@group(7) @binding(6) var<storage, read> velocity_scale: array<f32>; // Scaling factor for velocity
 
 @compute @workgroup_size(256, 1, 1)
 fn adam_optimizer_8bit_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
@@ -459,5 +459,103 @@ fn memory_copy_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     
     if (idx < numElements) {
         destination[idx] = source[idx];
+    }
+}
+
+// ============================================================================
+// Cross-Entropy Loss Kernel (Softmax + NLL)
+//   Computes token-level cross-entropy loss for a batch of logits/labels.
+//   logits  : flattened [batch * vocab] float32 tensor
+//   labels  : flattened [batch] u32 tensor (class indices)
+//   losses  : output [batch] float32 tensor storing per-sample loss
+// -----------------------------------------------------------------------------
+
+struct CELossParams {
+    vocabSize : u32,
+    batchSize : u32,
+    epsilon   : f32,   // small value to avoid log(0)
+}
+
+@group(6) @binding(0) var<uniform> ceParams : CELossParams;
+@group(6) @binding(1) var<storage, read> logits : array<f32>;          // size = batchSize * vocabSize
+@group(6) @binding(2) var<storage, read> labels : array<u32>;          // size = batchSize
+@group(6) @binding(3) var<storage, read_write> losses : array<f32>;    // size = batchSize
+
+// Shared memory buffers for reduction (one per workgroup)
+var<workgroup> ceSharedMax : array<f32, 256>;
+var<workgroup> ceSharedExp : array<f32, 256>;
+
+@compute @workgroup_size(256, 1, 1)
+fn cross_entropy_loss_main(@builtin(global_invocation_id) global_id : vec3<u32>,
+                           @builtin(local_invocation_id)  local_id  : vec3<u32>,
+                           @builtin(workgroup_id)         workgroup_id : vec3<u32>) {
+    let sampleIdx : u32 = workgroup_id.x; // one row per workgroup
+
+    if (sampleIdx >= ceParams.batchSize) {
+        return;
+    }
+
+    // ---------------------------------------------------------------------
+    // Step 1: compute local maximum for numerical stability
+    var localMax : f32 = -1e30;
+    var idx : u32 = local_id.x;
+    while (idx < ceParams.vocabSize) {
+        let val = logits[sampleIdx * ceParams.vocabSize + idx];
+        if (val > localMax) {
+            localMax = val;
+        }
+        idx += 256u;
+    }
+
+    // Write local max to shared memory and synchronize
+    ceSharedMax[local_id.x] = localMax;
+    workgroupBarrier();
+
+    // Parallel reduction to find global max within the workgroup
+    var stride : u32 = 128u;
+    while (stride > 0u) {
+        if (local_id.x < stride) {
+            let other = ceSharedMax[local_id.x + stride];
+            if (other > ceSharedMax[local_id.x]) {
+                ceSharedMax[local_id.x] = other;
+            }
+        }
+        stride = stride / 2u;
+        workgroupBarrier();
+    }
+    let maxLogit : f32 = ceSharedMax[0];
+
+    // ---------------------------------------------------------------------
+    // Step 2: compute exp(logit - max) and local sum
+    var localSum : f32 = 0.0;
+    idx = local_id.x;
+    while (idx < ceParams.vocabSize) {
+        let val = logits[sampleIdx * ceParams.vocabSize + idx];
+        localSum += exp(val - maxLogit);
+        idx += 256u;
+    }
+
+    // Write local sum to shared memory and synchronize
+    ceSharedExp[local_id.x] = localSum;
+    workgroupBarrier();
+
+    // Parallel reduction to compute global sum
+    stride = 128u;
+    while (stride > 0u) {
+        if (local_id.x < stride) {
+            ceSharedExp[local_id.x] = ceSharedExp[local_id.x] + ceSharedExp[local_id.x + stride];
+        }
+        stride = stride / 2u;
+        workgroupBarrier();
+    }
+    let sumExp : f32 = ceSharedExp[0];
+
+    // ---------------------------------------------------------------------
+    // Step 3: compute loss for the true label (thread 0 writes result)
+    if (local_id.x == 0u) {
+        let label : u32 = labels[sampleIdx];
+        let logit = logits[sampleIdx * ceParams.vocabSize + label];
+        let logProb = (logit - maxLogit) - log(sumExp + ceParams.epsilon);
+        losses[sampleIdx] = -logProb;
     }
 }

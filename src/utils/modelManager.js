@@ -188,12 +188,14 @@ export class ModelManager {
   }
 
   async unloadModel(modelId) {
-      // In this worker-based architecture, we might not need to explicitly unload models
-      // as the worker manages memory. We can just remove it from our state.
-      if (modelStates.has(modelId)) {
-          modelStates.delete(modelId);
-          console.log('Model state removed:', modelId);
-      }
+    // In this worker-based architecture, we tell the worker to unload the model.
+    if (worker) {
+      worker.postMessage({ type: 'unload', data: { model_id: modelId } });
+    }
+    if (modelStates.has(modelId)) {
+        modelStates.delete(modelId);
+        console.log('Model state removed:', modelId);
+    }
   }
 
   async clearAll() {
